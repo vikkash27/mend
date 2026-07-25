@@ -28,7 +28,9 @@ function redDecision(): Decision {
     condition: "Suspected pulmonary embolism",
     action: "Call 911 now. This combination can indicate a pulmonary embolism.",
     call: "911",
-    rationale: ["Breathlessness reported with heart rate 122, above the day-4 expected maximum of 110."],
+    rationale: [
+      "Breathlessness reported with heart rate 122, more than 10 bpm above the day-4 expected maximum of 100.",
+    ],
     firedRules: ["pe.breathless_with_tachycardia"],
   };
 }

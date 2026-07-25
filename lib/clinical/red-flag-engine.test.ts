@@ -254,14 +254,20 @@ describe("evaluate — additional safety-edge cases beyond the mandated table", 
 
 describe("evaluate — rationale threshold values are the single source of truth (no duplicated offsets)", () => {
   // The tachycardia threshold (phase.normalEnvelope.hrMax + 10) is computed
-  // once in buildContext and must be the exact number both the boolean test
-  // AND the rationale text use. This test independently re-derives the
-  // expected threshold from getPhase (not from engine internals) and checks
-  // the boundary from both directions: it would fail if the decision logic
-  // and the rationale text ever again read two different offsets.
-  it("tachycardia boundary: hr == threshold does not fire; hr == threshold+1 fires and rationale cites the exact same threshold", () => {
+  // once in buildContext and must stay consistent with the rationale text.
+  // The boundary assertions below prove the decision logic uses it; the
+  // rationale assertions prove the prose describes the same arithmetic.
+  //
+  // The rationale deliberately cites the envelope maximum plus the margin
+  // rather than the summed threshold: "expected maximum" means the phase
+  // envelope bound everywhere else in the codebase (trends.ts, the vitals
+  // tiles), so applying that phrase to hrMax + 10 made two surfaces state
+  // different numbers for the same clinical concept.
+  it("tachycardia boundary: hr == threshold does not fire; hr == threshold+1 fires and rationale describes the same arithmetic", () => {
     const day = 4;
-    const expectedThreshold = getPhase(day).normalEnvelope.hrMax + 10; // 110
+    const envelopeMax = getPhase(day).normalEnvelope.hrMax; // 100
+    const margin = 10;
+    const expectedThreshold = envelopeMax + margin; // 110
 
     const atBoundary = evaluate({
       dayPostOp: day,
@@ -278,7 +284,10 @@ describe("evaluate — rationale threshold values are the single source of truth
     expect(justOver.level).toBe("red");
     expect(justOver.condition).toBe("Suspected pulmonary embolism");
     expect(justOver.firedRules).toEqual(["pe.breathless_with_tachycardia"]);
-    expect(justOver.rationale[0]).toContain(`${expectedThreshold}`);
+    // Both operands must appear, so a reader can reconstruct the threshold the
+    // logic actually applied, and neither can drift without failing here.
+    expect(justOver.rationale[0]).toContain(`${envelopeMax}`);
+    expect(justOver.rationale[0]).toContain(`${margin} bpm`);
   });
 
   // Same regression, for the PE low-SpO2 floor (phase.normalEnvelope.spo2Min - 2).

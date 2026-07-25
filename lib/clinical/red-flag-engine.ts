@@ -143,7 +143,7 @@ const RED_RULES: Rule[] = [
     call: "911",
     test: (ctx) => breathlessOrChestPain(ctx) && ctx.tachycardic,
     rationale: (ctx) =>
-      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with heart rate ${ctx.vitals.hr}, above the day-${ctx.dayPostOp} expected maximum of ${ctx.tachycardiaThresholdBpm}.`,
+      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with heart rate ${ctx.vitals.hr}, more than 10 bpm above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.hrMax}.`,
   },
   {
     id: "pe.breathless_with_low_spo2",
@@ -228,7 +228,7 @@ const RED_RULES: Rule[] = [
     call: "911",
     test: (ctx) => ctx.fevered && ctx.tachycardic,
     rationale: (ctx) =>
-      `Temperature ${ctx.vitals.tempC}°C, above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C, combined with heart rate ${ctx.vitals.hr}, above the expected maximum of ${ctx.tachycardiaThresholdBpm}${ctx.symptoms.woundDischarge ? "; wound discharge also reported" : ""}.`,
+      `Temperature ${ctx.vitals.tempC}°C, above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C, combined with heart rate ${ctx.vitals.hr}, more than 10 bpm above the expected maximum of ${ctx.phase.normalEnvelope.hrMax}${ctx.symptoms.woundDischarge ? "; wound discharge also reported" : ""}.`,
   },
 ];
 
