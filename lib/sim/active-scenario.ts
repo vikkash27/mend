@@ -37,15 +37,15 @@ export const SCENARIO_META: Record<
   { label: string; summary: string }
 > = {
   green: {
-    label: "Green",
+    label: "Stable recovery",
     summary: "Well patient, POD 4 — nothing remarkable.",
   },
   pe: {
-    label: "PE",
-    summary: "Acute PE-pattern: hypoxic, tachycardic, ECG tachycardia.",
+    label: "Suspected PE pattern",
+    summary: "Hypoxic, tachycardic; ECG tachycardia.",
   },
   drift: {
-    label: "Drift",
+    label: "Slow HR drift",
     summary: "In-range vitals; resting HR climbing ~3 bpm/day.",
   },
 };
