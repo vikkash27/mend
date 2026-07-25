@@ -26,11 +26,31 @@ const VIEWPORTS = [
   { name: "phone", width: 390, height: 844 },
 ];
 
+// Default set includes the demo peak frames so every harness run covers them —
+// bare `/call` and `/family` alone miss escalated takeover and attention state.
 const ROUTES = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ["/", "/styleguide", "/call", "/family", "/clinician", "/clinician/engine", "/console"];
+  : [
+      "/",
+      "/styleguide",
+      "/call",
+      "/call?stage=escalated",
+      "/family",
+      "/family?state=attention",
+      "/clinician",
+      "/clinician/engine",
+      "/console",
+    ];
 
-const slug = (r) => (r === "/" ? "root" : r.replace(/^\//, "").replace(/\//g, "-"));
+/** Filesystem-safe route slug — query chars must not leak into filenames. */
+const slug = (r) =>
+  r === "/"
+    ? "root"
+    : r
+        .replace(/^\//, "")
+        .replace(/[/?=&]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/-$/, "");
 
 /** WCAG relative luminance + contrast ratio, so we report numbers not vibes. */
 function contrast(rgb1, rgb2) {
