@@ -17,6 +17,7 @@ import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
 import { generateSbar } from "@/lib/llm/sbar";
 import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
+import { notifyCaregiver } from "@/lib/telephony/sms";
 
 /**
  * POST /api/checkin — the full check-in pipeline.
@@ -67,6 +68,7 @@ interface ClinicalContext {
   patientId: string | undefined;
   patientName: string;
   procedure: string;
+  caregiverPhone: string | undefined;
   vitals: VitalsReading;
   ecg: EcgReading | undefined;
   history: VitalsReading[];
@@ -82,6 +84,7 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
     patientId: undefined,
     patientName: DEFAULT_PATIENT_FIRST_NAME,
     procedure: DEMO_PATIENT_PROCEDURE_FALLBACK,
+    caregiverPhone: undefined,
     vitals: scenarioVitals(FALLBACK_SCENARIO, now),
     ecg: scenarioEcg(FALLBACK_SCENARIO),
     history: scenarioHistory(FALLBACK_SCENARIO),
@@ -110,6 +113,7 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
       patientId: patient.id,
       patientName: firstName(patient.name),
       procedure: patient.procedure,
+      caregiverPhone: patient.caregiverPhone,
       vitals: vitals ?? fallback.vitals,
       ecg: ecg ?? fallback.ecg,
       history: history.length > 0 ? history : fallback.history,
@@ -142,6 +146,10 @@ async function persist(args: {
   decision: ReturnType<typeof composeDecision>;
   trendFindings: ReturnType<typeof evaluateTrends>;
   sbar: string | null;
+  /** Set only when `notifyCaregiver` actually sent an SMS for this
+   * check-in, so `escalations.notified_caregiver_at` can distinguish a
+   * first send from a later resend. */
+  notifiedCaregiverAt: string | null;
 }): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase || !args.patientId) {
@@ -167,6 +175,7 @@ async function persist(args: {
         checkin_id: checkinId ?? null,
         level: args.decision.level,
         condition: args.decision.condition ?? null,
+        notified_caregiver_at: args.notifiedCaregiverAt,
       });
     }
   } catch (err) {
@@ -194,7 +203,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const phase = getPhase(dayPostOp);
 
   const symptoms = await extractSymptoms(body.transcript);
-  const { patientId, patientName, procedure, vitals, ecg, history } = await loadClinicalContext();
+  const { patientId, patientName, procedure, caregiverPhone, vitals, ecg, history } = await loadClinicalContext();
 
   const decision = evaluate({ dayPostOp, symptoms, vitals, ecg });
   const trendFindings = evaluateTrends(history, buildSymptomsHistory(history, symptoms), phase);
@@ -214,6 +223,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
   }
 
+  // Caregiver notification is independent of persistence: it must still
+  // fire on amber/red even when Supabase is unavailable, as long as a
+  // destination number is configured (patient.caregiverPhone or the
+  // DEMO_CAREGIVER_PHONE fallback inside notifyCaregiver itself).
+  let notifiedCaregiverAt: string | null = null;
+  if (composed.level !== "green" && sbar !== null) {
+    const notifyResult = await notifyCaregiver({ name: patientName, caregiverPhone }, composed, sbar);
+    if (notifyResult.status === "sent") {
+      notifiedCaregiverAt = new Date().toISOString();
+    } else if (notifyResult.status === "error") {
+      console.warn("[api/checkin] notifyCaregiver failed:", notifyResult.reason);
+    }
+  }
+
   await persist({
     patientId,
     dayPostOp,
@@ -223,6 +246,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     decision: composed,
     trendFindings,
     sbar,
+    notifiedCaregiverAt,
   });
 
   return NextResponse.json({ decision: composed, trendFindings, phase, sbar, symptoms, vitals, ecg });

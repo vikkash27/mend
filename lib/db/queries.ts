@@ -51,6 +51,12 @@ export interface DemoPatient {
   name: string;
   procedure: string;
   surgeryDate: string;
+  /** Undefined when the column is null — no destination number on file for
+   * this row. Callers (app/api/call) fall back to `DEMO_PATIENT_PHONE`. */
+  phone: string | undefined;
+  /** Undefined when the column is null. Callers (app/api/checkin) fall back
+   * to `DEMO_CAREGIVER_PHONE`. */
+  caregiverPhone: string | undefined;
 }
 
 export async function fetchDemoPatient(
@@ -59,7 +65,7 @@ export async function fetchDemoPatient(
   const result = await withTimeout(
     supabase
       .from("patients")
-      .select("id, name, procedure, surgery_date")
+      .select("id, name, procedure, surgery_date, phone, caregiver_phone")
       .eq("name", DEMO_PATIENT_NAME)
       .limit(1)
       .maybeSingle(),
@@ -75,6 +81,8 @@ export async function fetchDemoPatient(
     name: result.data.name,
     procedure: result.data.procedure,
     surgeryDate: result.data.surgery_date,
+    phone: result.data.phone ?? undefined,
+    caregiverPhone: result.data.caregiver_phone ?? undefined,
   };
 }
 
