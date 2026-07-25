@@ -53,10 +53,12 @@ export function scenarioVitals(scenario: Scenario, now: Date): VitalsReading {
 /**
  * 14 days of trailing readings ending "now" (today), one per day.
  *
- * drift's HR climbs linearly by exactly 3 bpm/day, from 60 to 99 — a rate
- * that clears `evaluateTrends()`'s +3 bpm/day amber threshold on both the
- * full series and its trailing-7-reading window, while the highest value
- * (99) still sits strictly inside the phase's hrMax of 100.
+ * drift's HR climbs linearly by exactly 3 bpm/day, from 60 to 99 — sitting
+ * exactly on the inclusive lower boundary of `evaluateTrends()`'s +3 bpm/day
+ * amber threshold (the check is `slope >= 3`, so this fixture is a boundary
+ * hit, not a margin) on both the full series and its trailing-7-reading
+ * window, while the highest value (99) still sits strictly inside the
+ * phase's hrMax of 100.
  */
 export function scenarioHistory(scenario: Scenario): VitalsReading[] {
   const now = new Date();

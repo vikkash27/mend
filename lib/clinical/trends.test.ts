@@ -23,6 +23,20 @@ function noSymptoms(): Symptoms {
   return {};
 }
 
+/**
+ * Asserts `value` is defined via an explicit `expect(...).toBeDefined()`
+ * (so a fixture mistake shows up as a normal test failure), then narrows to
+ * the non-undefined type through a runtime check — never a `!` non-null
+ * assertion or an `as` cast.
+ */
+function defined<T>(value: T | undefined): T {
+  expect(value).toBeDefined();
+  if (value === undefined) {
+    throw new Error("expected value to be defined");
+  }
+  return value;
+}
+
 describe("evaluateTrends — brief cases", () => {
   it("HR 72->76->81->86 over four days, all inside envelope -> one amber hr finding", () => {
     const history = [
@@ -33,7 +47,7 @@ describe("evaluateTrends — brief cases", () => {
     ];
     // Sanity: never breaches the phase envelope on its own.
     for (const r of history) {
-      expect(r.hr!).toBeLessThan(phase.normalEnvelope.hrMax);
+      expect(defined(r.hr)).toBeLessThan(phase.normalEnvelope.hrMax);
     }
 
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
@@ -54,7 +68,7 @@ describe("evaluateTrends — brief cases", () => {
       reading(3, { spo2: 94 }),
     ];
     for (const r of history) {
-      expect(r.spo2!).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
+      expect(defined(r.spo2)).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
     }
 
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
@@ -150,9 +164,8 @@ describe("evaluateTrends — regresses on actual elapsed time, not array index",
 
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
 
-    const hrFinding = findings.find((f) => f.metric === "hr");
-    expect(hrFinding).toBeDefined();
-    expect(hrFinding!.severity).toBe("amber");
+    const hrFinding = defined(findings.find((f) => f.metric === "hr"));
+    expect(hrFinding.severity).toBe("amber");
   });
 });
 
@@ -202,12 +215,11 @@ describe("evaluateTrends — window bounds", () => {
 
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
 
-    const hrFinding = findings.find((f) => f.metric === "hr");
-    expect(hrFinding).toBeDefined();
-    expect(hrFinding!.description).toContain("75");
-    expect(hrFinding!.description).toContain("99");
+    const hrFinding = defined(findings.find((f) => f.metric === "hr"));
+    expect(hrFinding.description).toContain("75");
+    expect(hrFinding.description).toContain("99");
     // If the older days had leaked into the window, 60 would show up as the start value.
-    expect(hrFinding!.description).not.toContain("60");
+    expect(hrFinding.description).not.toContain("60");
   });
 });
 
@@ -220,14 +232,13 @@ describe("evaluateTrends — temperature", () => {
       reading(3, { tempC: 37.4 }),
     ];
     for (const r of history) {
-      expect(r.tempC!).toBeLessThan(phase.normalEnvelope.tempCMax);
+      expect(defined(r.tempC)).toBeLessThan(phase.normalEnvelope.tempCMax);
     }
 
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
 
-    const tempFinding = findings.find((f) => f.metric === "tempC");
-    expect(tempFinding).toBeDefined();
-    expect(tempFinding!.severity).toBe("amber");
+    const tempFinding = defined(findings.find((f) => f.metric === "tempC"));
+    expect(tempFinding.severity).toBe("amber");
   });
 
   it("a trivial temperature wobble does not fire", () => {
@@ -241,5 +252,120 @@ describe("evaluateTrends — temperature", () => {
     const findings = evaluateTrends(history, history.map(noSymptoms), phase);
 
     expect(findings.some((f) => f.metric === "tempC")).toBe(false);
+  });
+});
+
+describe("evaluateTrends — projected breach (phase is genuinely used)", () => {
+  it("hand-computed case: hr rising exactly +5 bpm/day from 95 crosses hrMax 100 in exactly 1 day", () => {
+    // Perfectly linear series -> OLS slope is exactly 5 bpm/day by construction:
+    // hr 80, 85, 90, 95 at days 0, 1, 2, 3. phase(5).normalEnvelope.hrMax = 100.
+    // Hand computation: t = (bound - last) / slope = (100 - 95) / 5 = 1 day.
+    const history = [
+      reading(0, { hr: 80 }),
+      reading(1, { hr: 85 }),
+      reading(2, { hr: 90 }),
+      reading(3, { hr: 95 }),
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+    const hrFinding = defined(findings.find((f) => f.metric === "hr"));
+
+    expect(phase.normalEnvelope.hrMax).toBe(100);
+    expect(hrFinding.description).toContain(
+      `crosses the ${phase.name} phase's expected maximum of ${phase.normalEnvelope.hrMax} bpm in 1 day.`,
+    );
+  });
+
+  it("omits the projection when the value has already crossed the bound", () => {
+    // tempC 38.0, 38.3, 38.6, 38.9 at days 0-3: slope +0.3C/day (fires, well
+    // above the +0.15 threshold), but every reading is already at or above
+    // phase(5)'s tempCMax of 38.0 -- there is nothing left to "cross".
+    const history = [
+      reading(0, { tempC: 38.0 }),
+      reading(1, { tempC: 38.3 }),
+      reading(2, { tempC: 38.6 }),
+      reading(3, { tempC: 38.9 }),
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+    const tempFinding = defined(findings.find((f) => f.metric === "tempC"));
+
+    expect(tempFinding.severity).toBe("amber");
+    expect(tempFinding.description).not.toContain("crosses");
+  });
+
+  it("omits the projection when the crossing is beyond the horizon", () => {
+    // hr 0, 3, 6, 9 at days 0-3: slope exactly +3 bpm/day, at the amber
+    // threshold, so the finding fires -- but at that rate crossing
+    // phase(5)'s hrMax of 100 is (100-9)/3 ~= 30.3 days out, past the
+    // engine's 30-day projection horizon. (Values are unrealistic for a
+    // human pulse; chosen purely to hit the horizon arithmetic exactly.)
+    const history = [
+      reading(0, { hr: 0 }),
+      reading(1, { hr: 3 }),
+      reading(2, { hr: 6 }),
+      reading(3, { hr: 9 }),
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+    const hrFinding = defined(findings.find((f) => f.metric === "hr"));
+
+    expect(hrFinding.description).not.toContain("crosses");
+  });
+
+  // Note on "slope points away from the bound": for hr/tempC the finding
+  // only fires when the slope is positive (rising toward the upper bound),
+  // and for spo2 only when the slope is negative (falling toward the lower
+  // bound) -- so a firing finding's slope always points *toward* its own
+  // bound by construction. A slope pointing away from the bound is
+  // therefore provably unreachable through the public API for these three
+  // metrics; it collapses into the same `t <= 0` guard as "already past the
+  // bound" (see `daysUntilBreach`'s doc comment), which the test above
+  // exercises directly.
+
+  it("painScore findings never include a projection (no envelope bound exists for pain)", () => {
+    const history = [reading(0), reading(1), reading(2)];
+    const symptoms: Symptoms[] = [{ painScore: 3 }, { painScore: 5 }, { painScore: 7 }];
+
+    const findings = evaluateTrends(history, symptoms, phase);
+    const painFinding = defined(findings.find((f) => f.metric === "painScore"));
+
+    expect(painFinding.description).not.toContain("crosses");
+  });
+});
+
+describe("evaluateTrends — degenerate timestamps", () => {
+  it("three identical timestamps hit the denominator-zero guard and produce no finding", () => {
+    const sameTimestamp = isoDay(2);
+    const history: VitalsReading[] = [
+      { timestamp: sameTimestamp, source: "manual", quality: "ok", hr: 72 },
+      { timestamp: sameTimestamp, source: "manual", quality: "ok", hr: 90 },
+      { timestamp: sameTimestamp, source: "manual", quality: "ok", hr: 110 },
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+
+    expect(findings).toEqual([]);
+  });
+
+  it("an invalid timestamp string is dropped rather than corrupting the regression (policy: reject, don't guess)", () => {
+    const history: VitalsReading[] = [
+      reading(0, { hr: 80 }),
+      { timestamp: "not-a-real-timestamp", source: "manual", quality: "ok", hr: 999 },
+      reading(1, { hr: 85 }),
+      reading(2, { hr: 90 }),
+      reading(3, { hr: 95 }),
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+    const hrFinding = defined(findings.find((f) => f.metric === "hr"));
+
+    // If the invalid-timestamp reading (hr 999) had leaked in as NaN days or
+    // corrupted the sort order, the description would not read as this
+    // clean, linear +5 bpm/day series from 80 to 95, and 999 would appear.
+    expect(hrFinding.description).toContain("80");
+    expect(hrFinding.description).toContain("95");
+    expect(hrFinding.description).not.toContain("999");
+    expect(hrFinding.description).not.toContain("NaN");
   });
 });

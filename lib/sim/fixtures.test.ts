@@ -12,16 +12,29 @@ const phase = getPhase(5);
 
 const NOW = new Date("2026-07-25T08:00:00.000Z");
 
+/**
+ * Asserts `value` is defined via an explicit `expect(...).toBeDefined()`
+ * (so a fixture mistake shows up as a normal test failure), then narrows to
+ * the non-undefined type through a runtime check — never a `!` non-null
+ * assertion or an `as` cast.
+ */
+function defined<T>(value: T | undefined): T {
+  expect(value).toBeDefined();
+  if (value === undefined) {
+    throw new Error("expected value to be defined");
+  }
+  return value;
+}
+
 describe("scenarioVitals", () => {
   it("green sits within the phase envelope and evaluate() returns green", () => {
     const vitals = scenarioVitals("green", NOW);
 
     expect(vitals.source).toBe("simulated");
     expect(vitals.timestamp).toBe(NOW.toISOString());
-    expect(vitals.hr).toBeDefined();
-    expect(vitals.hr as number).toBeLessThan(phase.normalEnvelope.hrMax);
-    expect(vitals.spo2 as number).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
-    expect(vitals.tempC as number).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
+    expect(defined(vitals.hr)).toBeLessThan(phase.normalEnvelope.hrMax);
+    expect(defined(vitals.spo2)).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
+    expect(defined(vitals.tempC)).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
 
     const decision = evaluate({ dayPostOp: 4, symptoms: {}, vitals });
     expect(decision.level).toBe("green");
@@ -47,7 +60,7 @@ describe("scenarioVitals", () => {
     const vitals = scenarioVitals("drift", NOW);
 
     expect(vitals.source).toBe("simulated");
-    expect(vitals.hr as number).toBeLessThan(phase.normalEnvelope.hrMax);
+    expect(defined(vitals.hr)).toBeLessThan(phase.normalEnvelope.hrMax);
 
     const decision = evaluate({ dayPostOp: 13, symptoms: {}, vitals });
     expect(decision.level).toBe("green");
@@ -79,9 +92,9 @@ describe("scenarioHistory", () => {
   it("green history is flat and inside the envelope on every reading", () => {
     const history = scenarioHistory("green");
     for (const r of history) {
-      expect(r.hr as number).toBeLessThan(phase.normalEnvelope.hrMax);
-      expect(r.spo2 as number).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
-      expect(r.tempC as number).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
+      expect(defined(r.hr)).toBeLessThan(phase.normalEnvelope.hrMax);
+      expect(defined(r.spo2)).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
+      expect(defined(r.tempC)).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
     }
 
     const symptoms: Symptoms[] = history.map(() => ({}));
@@ -91,16 +104,15 @@ describe("scenarioHistory", () => {
   it("drift: every single reading sits inside the phase envelope (no breach)", () => {
     const history = scenarioHistory("drift");
     for (const r of history) {
-      expect(r.hr).toBeDefined();
-      expect(r.hr as number).toBeLessThan(phase.normalEnvelope.hrMax);
-      expect(r.spo2 as number).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
-      expect(r.tempC as number).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
+      expect(defined(r.hr)).toBeLessThan(phase.normalEnvelope.hrMax);
+      expect(defined(r.spo2)).toBeGreaterThanOrEqual(phase.normalEnvelope.spo2Min);
+      expect(defined(r.tempC)).toBeLessThanOrEqual(phase.normalEnvelope.tempCMax);
     }
   });
 
   it("drift: HR rises across the series (the trajectory the demo relies on)", () => {
     const history = scenarioHistory("drift");
-    const hrs = history.map((r) => r.hr as number);
+    const hrs = history.map((r) => defined(r.hr));
     for (let i = 1; i < hrs.length; i++) {
       expect(hrs[i]).toBeGreaterThanOrEqual(hrs[i - 1]);
     }
