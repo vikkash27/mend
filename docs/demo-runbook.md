@@ -146,7 +146,9 @@ fired rules listed small underneath. Let it land before speaking.
 
 **Cut to `/family`.** Same event, the daughter's phone. Plain language, no numbers, no rule
 ids. The contrast with what the clinician sees is the point — one engine, three audiences,
-each told exactly what they can act on.
+each told exactly what they can act on. Prefer opening `/family` with no query string after
+selecting PE on `/console` (durable store). If you need a deep link for the PE cut, use
+`/family?state=urgent` — never `?state=attention` (that is the drift/amber frame).
 
 **Cut to `/clinician`.** Worklist sorted by risk, the SBAR ready to hand off, and the audit
 trail expanded to show fired rules with their inputs, thresholds and provenance. This is
