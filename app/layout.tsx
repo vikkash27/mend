@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
+import { ConsoleShortcut } from "@/app/components/ConsoleShortcut";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({
     >
       <body className="bg-paper font-sans text-body text-ink">
         {children}
+        <ConsoleShortcut />
         <Toaster position="bottom-right" closeButton />
       </body>
     </html>

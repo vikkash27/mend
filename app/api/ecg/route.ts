@@ -14,6 +14,16 @@ const DEMO_PATIENT_NAME = "Margaret (demo, synthetic)";
  * back into the clinical layer.
  */
 export async function POST(request: Request): Promise<NextResponse> {
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    return NextResponse.json(
+      {
+        error:
+          "ANTHROPIC_API_KEY is not configured — Kardia PDF extraction is unavailable.",
+      },
+      { status: 503 },
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();

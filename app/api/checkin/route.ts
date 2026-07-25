@@ -16,6 +16,7 @@ import {
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
 import { generateSbar } from "@/lib/llm/sbar";
+import { getActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
 import { notifyCaregiver } from "@/lib/telephony/sms";
 
@@ -35,7 +36,6 @@ import { notifyCaregiver } from "@/lib/telephony/sms";
  */
 
 const DEFAULT_DAY_POST_OP = 4;
-const FALLBACK_SCENARIO = "green" as const;
 const DEMO_PATIENT_PROCEDURE_FALLBACK = "hip hemiarthroplasty";
 
 interface CheckinRequestBody {
@@ -80,14 +80,15 @@ interface ClinicalContext {
  * (lib/db/queries.ts times out every read). */
 async function loadClinicalContext(): Promise<ClinicalContext> {
   const now = new Date();
+  const fallbackScenario = getActiveScenario();
   const fallback: ClinicalContext = {
     patientId: undefined,
     patientName: DEFAULT_PATIENT_FIRST_NAME,
     procedure: DEMO_PATIENT_PROCEDURE_FALLBACK,
     caregiverPhone: undefined,
-    vitals: scenarioVitals(FALLBACK_SCENARIO, now),
-    ecg: scenarioEcg(FALLBACK_SCENARIO),
-    history: scenarioHistory(FALLBACK_SCENARIO),
+    vitals: scenarioVitals(fallbackScenario, now),
+    ecg: scenarioEcg(fallbackScenario),
+    history: scenarioHistory(fallbackScenario),
   };
 
   const supabase = getSupabaseClient();
@@ -202,6 +203,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   const dayPostOp = body.dayPostOp ?? DEFAULT_DAY_POST_OP;
   const phase = getPhase(dayPostOp);
 
+  const warnings: string[] = [];
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    warnings.push(
+      "ANTHROPIC_API_KEY is not set — symptoms were not extracted from the transcript, and SBAR will use the deterministic fallback.",
+    );
+  }
+
   const symptoms = await extractSymptoms(body.transcript);
   const { patientId, patientName, procedure, caregiverPhone, vitals, ecg, history } = await loadClinicalContext();
 
@@ -249,5 +257,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     notifiedCaregiverAt,
   });
 
-  return NextResponse.json({ decision: composed, trendFindings, phase, sbar, symptoms, vitals, ecg });
+  return NextResponse.json({
+    decision: composed,
+    trendFindings,
+    phase,
+    sbar,
+    symptoms,
+    vitals,
+    ecg,
+    scenario: getActiveScenario(),
+    ...(warnings.length > 0 ? { warnings } : {}),
+  });
 }

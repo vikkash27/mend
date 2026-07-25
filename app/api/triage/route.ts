@@ -5,6 +5,7 @@ import { DEFAULT_PATIENT_FIRST_NAME, firstName, scriptForDecision } from "@/lib/
 import type { Symptoms } from "@/lib/clinical/types";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { fetchDemoPatient, fetchLatestEcg, fetchLatestVitals } from "@/lib/db/queries";
+import { getActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioVitals } from "@/lib/sim/fixtures";
 
 /**
@@ -31,8 +32,6 @@ const WEBHOOK_SECRET_HEADER = "x-triage-webhook-secret";
  * ("post-op day 4"), so an agent that omits `dayPostOp` still gets a
  * clinically sensible default rather than an arbitrary one. */
 const DEFAULT_DAY_POST_OP = 4;
-
-const FALLBACK_SCENARIO = "green" as const;
 
 /**
  * Constant-time comparison of the request's webhook secret against
@@ -143,10 +142,11 @@ interface LatestReadings {
  * "absent" per the task brief, not as an error. Never throws. */
 async function loadLatestReadings(): Promise<LatestReadings> {
   const now = new Date();
+  const fallbackScenario = getActiveScenario();
   const fallback: LatestReadings = {
     patientFirstName: DEFAULT_PATIENT_FIRST_NAME,
-    vitals: scenarioVitals(FALLBACK_SCENARIO, now),
-    ecg: scenarioEcg(FALLBACK_SCENARIO),
+    vitals: scenarioVitals(fallbackScenario, now),
+    ecg: scenarioEcg(fallbackScenario),
   };
 
   const supabase = getSupabaseClient();
