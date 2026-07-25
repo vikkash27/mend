@@ -46,7 +46,7 @@ export function Integrations() {
 
         <div className="mt-14 grid gap-10 lg:grid-cols-2 lg:gap-12">
           <motion.div variants={fadeUp} className="flex flex-col gap-5">
-            <DeviceDemoShell label="Ops → chart">
+            <DeviceDemoShell label="Capture → chart">
               <KardiaWalkthrough reduce={reduce} />
             </DeviceDemoShell>
             <div className="pt-1">
@@ -143,7 +143,7 @@ function ChartHeader({ live }: { live?: boolean }) {
   );
 }
 
-/** Upload PDF in Ops → determination + BPM flash onto the patient chart. */
+/** Upload PDF in Capture → determination + BPM flash onto the patient chart. */
 function KardiaWalkthrough({ reduce }: { reduce: boolean }) {
   // 0 idle · 1 drop · 2 extracting · 3 chart updated
   const step = useWalkStep(4, 2400, reduce);
@@ -153,10 +153,10 @@ function KardiaWalkthrough({ reduce }: { reduce: boolean }) {
 
   return (
     <div className="grid h-full gap-3 sm:grid-cols-2">
-      {/* Ops */}
+      {/* Capture */}
       <div className="flex flex-col rounded-xl border border-line bg-wash/40 p-3">
         <p className="text-meta font-medium tracking-wide text-ink-tertiary uppercase">
-          Ops · Kardia PDF
+          Capture · Kardia PDF
         </p>
         <div className="relative mt-3 flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-paper p-3 text-center">
           <AnimatePresence mode="wait">

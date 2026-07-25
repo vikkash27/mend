@@ -1,3 +1,5 @@
+import { DEFAULT_CAPTURE_HREF } from "@/lib/ui/capture-route";
+
 export const landingCopy = {
   brand: "Mend",
   headline: "Recovery doesn’t end at discharge.",
@@ -48,7 +50,7 @@ export const landingCopy = {
     kardia: {
       title: "KardiaMobile 6L",
       benefit: "PDF upload writes rhythm and BPM onto the patient chart immediately.",
-      body: "Drop the Kardia export into Ops. Mend pulls the FDA-cleared determination and BPM onto Margaret’s dashboard and into the red-flag engine — no separate PDF viewer, no waiting for someone to re-type numbers.",
+      body: "Drop the Kardia export into Capture. Mend pulls the FDA-cleared determination and BPM onto Margaret’s dashboard and into the red-flag engine — no separate PDF viewer, no waiting for someone to re-type numbers.",
       note: "AliveCor KardiaMobile 6L · PDF export · determination as printed",
     },
     watch: {
@@ -96,6 +98,12 @@ export const PRODUCT_SURFACES = [
     href: "/clinician",
     label: "Clinician hub",
     note: "Actions, patients, and live call",
+    quiet: true,
+  },
+  {
+    href: DEFAULT_CAPTURE_HREF,
+    label: "Capture",
+    note: "Margaret — vitals and Kardia PDF",
     quiet: true,
   },
   {
