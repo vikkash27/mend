@@ -50,3 +50,26 @@ observation to gate an emergency on.
 **Accepted error direction:** Over-triage.
 
 **Signed off by:** project clinical lead, 2026-07-25.
+
+---
+
+## 2026-07-25 — Temperature trend threshold set at +0.15 C/day
+
+**Rule:** `trend.tempC.*` in `lib/clinical/trends.ts`
+
+**Decision:** A least-squares temperature slope of >= +0.15 C/day over the trailing window
+raises an AMBER trend finding, even while every individual reading remains inside the
+phase envelope.
+
+**Rejected alternative:** Omitting temperature from trend analysis entirely, leaving it to
+the absolute-threshold rules in the red-flag engine.
+
+**Reasoning:** A steadily climbing temperature inside the normal post-op envelope is the
+characteristic early signature of a developing deep infection, and it is invisible to any
+single-reading threshold. The specific figure is an engineering judgment, not a cited
+value.
+
+**Accepted error direction:** Over-triage, and sensitivity to noisy home thermometers.
+
+**Status:** UNCITED — engineering judgment by the implementer, not clinically signed off.
+Needs the same provenance treatment as the phase envelopes before any real use.
