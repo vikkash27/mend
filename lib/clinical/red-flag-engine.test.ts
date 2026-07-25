@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getPhase } from "./recovery-graph";
 import { evaluate } from "./red-flag-engine";
 import type { EcgReading, Symptoms, VitalsReading } from "./types";
 
@@ -71,6 +72,27 @@ describe("evaluate — vignette table (binding, from task-4-brief.md)", () => {
     });
     expect(d.level).toBe("red");
     expect(d.condition).toBe("Suspected pulmonary embolism");
+    // hr 122 already exceeds day-4's tachycardia threshold (110) on its own,
+    // so the vitals-tachycardia rule fires before the ECG-only rule is ever
+    // reached. This is documented, correct behaviour (rule array order), but
+    // it means this vignette does NOT exercise
+    // `pe.breathless_with_ecg_tachycardia` — see the next test for that.
+    expect(d.firedRules).toEqual(["pe.breathless_with_tachycardia"]);
+  });
+
+  it("5b: day4, breathless, non-tachycardic hr90 (not ECG-derived), ECG tachycardia -> red PE via the ECG-only rule", () => {
+    // Unlike vignette 5, hr 90 does NOT exceed day-4's tachycardia threshold
+    // (110), so `pe.breathless_with_tachycardia` cannot fire here. This is
+    // the case that genuinely exercises `pe.breathless_with_ecg_tachycardia`.
+    const d = evaluate({
+      dayPostOp: 4,
+      symptoms: { breathless: true },
+      vitals: vitals({ hr: 90 }),
+      ecg: ecg({ determination: "tachycardia" }),
+    });
+    expect(d.level).toBe("red");
+    expect(d.condition).toBe("Suspected pulmonary embolism");
+    expect(d.firedRules).toEqual(["pe.breathless_with_ecg_tachycardia"]);
   });
 
   it("6: day4, no symptoms, spo2 88/hr96 -> red Hypoxia", () => {
@@ -227,5 +249,86 @@ describe("evaluate — additional safety-edge cases beyond the mandated table", 
     });
     expect(d.level).toBe("green");
     expect(d.firedRules).toEqual([]);
+  });
+});
+
+describe("evaluate — rationale threshold values are the single source of truth (no duplicated offsets)", () => {
+  // The tachycardia threshold (phase.normalEnvelope.hrMax + 10) is computed
+  // once in buildContext and must be the exact number both the boolean test
+  // AND the rationale text use. This test independently re-derives the
+  // expected threshold from getPhase (not from engine internals) and checks
+  // the boundary from both directions: it would fail if the decision logic
+  // and the rationale text ever again read two different offsets.
+  it("tachycardia boundary: hr == threshold does not fire; hr == threshold+1 fires and rationale cites the exact same threshold", () => {
+    const day = 4;
+    const expectedThreshold = getPhase(day).normalEnvelope.hrMax + 10; // 110
+
+    const atBoundary = evaluate({
+      dayPostOp: day,
+      symptoms: { breathless: true },
+      vitals: vitals({ hr: expectedThreshold }),
+    });
+    expect(atBoundary.level).not.toBe("red");
+
+    const justOver = evaluate({
+      dayPostOp: day,
+      symptoms: { breathless: true },
+      vitals: vitals({ hr: expectedThreshold + 1 }),
+    });
+    expect(justOver.level).toBe("red");
+    expect(justOver.condition).toBe("Suspected pulmonary embolism");
+    expect(justOver.firedRules).toEqual(["pe.breathless_with_tachycardia"]);
+    expect(justOver.rationale[0]).toContain(`${expectedThreshold}`);
+  });
+
+  // Same regression, for the PE low-SpO2 floor (phase.normalEnvelope.spo2Min - 2).
+  it("PE low-SpO2 boundary: spo2 == floor does not fire; spo2 == floor-1 fires and rationale cites the exact same floor", () => {
+    const day = 4;
+    const expectedFloor = getPhase(day).normalEnvelope.spo2Min - 2; // 92
+
+    const atBoundary = evaluate({
+      dayPostOp: day,
+      symptoms: { breathless: true },
+      vitals: vitals({ spo2: expectedFloor }),
+    });
+    // At the boundary the PE-spo2 rule must not fire, and spo2 92 is still
+    // >= 90 so isolated hypoxia won't fire either, and no other rule is
+    // satisfied by this input -> falls all the way through to green.
+    expect(atBoundary.level).toBe("green");
+
+    const justUnder = evaluate({
+      dayPostOp: day,
+      symptoms: { breathless: true },
+      vitals: vitals({ spo2: expectedFloor - 1 }),
+    });
+    expect(justUnder.level).toBe("red");
+    expect(justUnder.condition).toBe("Suspected pulmonary embolism");
+    expect(justUnder.firedRules).toEqual(["pe.breathless_with_low_spo2"]);
+    expect(justUnder.rationale[0]).toContain(`${expectedFloor}`);
+  });
+});
+
+describe("evaluate — co-occurring findings are surfaced consistently in rationale", () => {
+  it("wound_infection.fever mentions co-occurring wound discharge, matching sepsis.fever_with_tachycardia's style", () => {
+    // Fever without tachycardia -> wound_infection.fever (amber), not sepsis.
+    const d = evaluate({
+      dayPostOp: 21,
+      symptoms: { woundDischarge: true },
+      vitals: vitals({ tempC: 37.8, hr: 84 }),
+    });
+    expect(d.level).toBe("amber");
+    expect(d.condition).toBe("Possible wound infection");
+    expect(d.firedRules).toEqual(["wound_infection.fever"]);
+    expect(d.rationale[0]).toContain("wound discharge also reported");
+  });
+
+  it("wound_infection.fever omits the discharge clause when discharge was not reported", () => {
+    const d = evaluate({
+      dayPostOp: 21,
+      symptoms: noSymptoms,
+      vitals: vitals({ tempC: 37.8, hr: 84 }),
+    });
+    expect(d.firedRules).toEqual(["wound_infection.fever"]);
+    expect(d.rationale[0]).not.toContain("wound discharge");
   });
 });

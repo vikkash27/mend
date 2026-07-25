@@ -27,8 +27,21 @@ interface Context {
   vitals: VitalsReading; // already passed through usableVitals()
   ecgDetermination: EcgDetermination | undefined; // undefined if absent or "unclassified"
   phase: Phase;
-  /** hr > phase.normalEnvelope.hrMax + 10. Never a hardcoded number. */
+  /**
+   * The resolved numeric tachycardia threshold (phase.normalEnvelope.hrMax +
+   * 10), computed once here. Both the `tachycardic` boolean below AND every
+   * rationale string that names this threshold read this same field — never
+   * recomputed inline — so the audit trail can never cite a threshold other
+   * than the one that actually governed the decision.
+   */
+  tachycardiaThresholdBpm: number;
+  /** hr > tachycardiaThresholdBpm. */
   tachycardic: boolean;
+  /**
+   * The resolved numeric PE low-SpO2 floor (phase.normalEnvelope.spo2Min -
+   * 2), computed once here for the same reason as tachycardiaThresholdBpm.
+   */
+  peLowSpo2ThresholdPct: number;
   /** tempC > phase.normalEnvelope.tempCMax. */
   fevered: boolean;
   /** quality !== "ok", OR every physiologic field is absent after stripping. */
@@ -54,8 +67,11 @@ function buildContext(input: EvaluateInput): Context {
       ? undefined
       : input.ecg.determination;
 
+  const tachycardiaThresholdBpm = phase.normalEnvelope.hrMax + 10;
   const tachycardic =
-    vitals.hr !== undefined && vitals.hr > phase.normalEnvelope.hrMax + 10;
+    vitals.hr !== undefined && vitals.hr > tachycardiaThresholdBpm;
+
+  const peLowSpo2ThresholdPct = phase.normalEnvelope.spo2Min - 2;
 
   const fevered =
     vitals.tempC !== undefined && vitals.tempC > phase.normalEnvelope.tempCMax;
@@ -75,7 +91,9 @@ function buildContext(input: EvaluateInput): Context {
     vitals,
     ecgDetermination,
     phase,
+    tachycardiaThresholdBpm,
     tachycardic,
+    peLowSpo2ThresholdPct,
     fevered,
     vitalsUnusable,
   };
@@ -110,7 +128,7 @@ const RED_RULES: Rule[] = [
     call: "911",
     test: (ctx) => breathlessOrChestPain(ctx) && ctx.tachycardic,
     rationale: (ctx) =>
-      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with heart rate ${ctx.vitals.hr}, above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.hrMax + 10}.`,
+      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with heart rate ${ctx.vitals.hr}, above the day-${ctx.dayPostOp} expected maximum of ${ctx.tachycardiaThresholdBpm}.`,
   },
   {
     id: "pe.breathless_with_low_spo2",
@@ -121,9 +139,9 @@ const RED_RULES: Rule[] = [
     test: (ctx) =>
       breathlessOrChestPain(ctx) &&
       ctx.vitals.spo2 !== undefined &&
-      ctx.vitals.spo2 < ctx.phase.normalEnvelope.spo2Min - 2,
+      ctx.vitals.spo2 < ctx.peLowSpo2ThresholdPct,
     rationale: (ctx) =>
-      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with SpO2 ${ctx.vitals.spo2}%, below the day-${ctx.dayPostOp} safe floor of ${ctx.phase.normalEnvelope.spo2Min - 2}%.`,
+      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with SpO2 ${ctx.vitals.spo2}%, below the day-${ctx.dayPostOp} safe floor of ${ctx.peLowSpo2ThresholdPct}%.`,
   },
   {
     id: "pe.breathless_with_ecg_tachycardia",
@@ -195,7 +213,7 @@ const RED_RULES: Rule[] = [
     call: "911",
     test: (ctx) => ctx.fevered && ctx.tachycardic,
     rationale: (ctx) =>
-      `Temperature ${ctx.vitals.tempC}°C, above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C, combined with heart rate ${ctx.vitals.hr}, above the expected maximum of ${ctx.phase.normalEnvelope.hrMax + 10}${ctx.symptoms.woundDischarge ? "; wound discharge also reported" : ""}.`,
+      `Temperature ${ctx.vitals.tempC}°C, above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C, combined with heart rate ${ctx.vitals.hr}, above the expected maximum of ${ctx.tachycardiaThresholdBpm}${ctx.symptoms.woundDischarge ? "; wound discharge also reported" : ""}.`,
   },
 ];
 
@@ -218,7 +236,7 @@ const AMBER_RULES: Rule[] = [
     call: "surgeon_office",
     test: (ctx) => ctx.fevered,
     rationale: (ctx) =>
-      `Temperature ${ctx.vitals.tempC}°C is above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C.`,
+      `Temperature ${ctx.vitals.tempC}°C is above the day-${ctx.dayPostOp} expected maximum of ${ctx.phase.normalEnvelope.tempCMax}°C${ctx.symptoms.woundDischarge ? "; wound discharge also reported" : ""}.`,
   },
   {
     id: "wound_infection.discharge",

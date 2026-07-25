@@ -12,12 +12,23 @@ export interface Symptoms {
   chestPain?: boolean;
   calfPainOrSwelling?: boolean;
   woundDischarge?: boolean;
+  /**
+   * Reserved: not yet read by any red-flag rule. The engine currently acts
+   * only on device temperature (`VitalsReading.tempC`) via `fevered`, never
+   * on a subjective report alone. Documented gap, not an oversight — wire
+   * this in deliberately if subjective-only fever is meant to be actionable.
+   */
   feverSubjective?: boolean;
   suddenSevereHipPain?: boolean;
   legShortenedOrRotated?: boolean;
   unableToWeightBear?: boolean;
   painControlled?: boolean;
   newConfusion?: boolean;
+  /**
+   * 0-10. Not read by any red-flag-engine rule — consumed exclusively by the
+   * trend engine (`evaluateTrends` in `trends.ts`), which watches its slope
+   * over time rather than any single-reading threshold.
+   */
   painScore?: number;
 }
 
