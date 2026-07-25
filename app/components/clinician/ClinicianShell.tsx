@@ -8,32 +8,49 @@ import { LiveCallStrip } from "./LiveCallStrip";
 /**
  * The frame every clinician surface sits in.
  *
- * This is the dense half of the product, and the frame says so: a thin fixed
- * bar of navigation and provenance, then the page. No hero, no whitespace
- * budget. The family view spends its screen on calm; a worklist spends it on
- * rows. Live check-in is a hub mode — not a peer nav destination.
+ * Dense clinical chrome: sticky app bar, section nav, optional breadcrumbs,
+ * then the page. Live check-in is a chart mode — not a peer nav destination.
  */
 
 const NAV = [
-  { href: "/clinician", label: "Hub" },
-  { href: "/clinician/engine", label: "Rule engine" },
+  { href: "/clinician", label: "Hub", match: (active: string) => active === "/clinician" },
+  {
+    href: "/clinician/patients",
+    label: "Patients",
+    match: (active: string) =>
+      active === "/clinician/patients" ||
+      (active.startsWith("/clinician/") &&
+        active !== "/clinician/engine" &&
+        !active.endsWith("/engine")),
+  },
+  {
+    href: "/clinician/engine",
+    label: "Rule engine",
+    match: (active: string) => active === "/clinician/engine",
+  },
 ];
+
+export type ClinicianCrumb = {
+  label: string;
+  /** When set, the crumb is a link (navigational path). Omit for the current page. */
+  href?: string;
+};
 
 export function ClinicianShell({
   active,
-  breadcrumb,
+  crumbs,
   children,
 }: {
   active: string;
-  /** Shown after the product name when the page is below the worklist. */
-  breadcrumb?: ReactNode;
+  /** Navigational path under Clinician (e.g. Patients → Margaret). */
+  crumbs?: ClinicianCrumb[];
   children: ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center gap-x-6 gap-y-1 px-6 md:px-8">
-          <p className="flex min-h-11 items-center gap-3">
+          <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <Link
               href="/"
               className="inline-flex min-h-11 items-center text-ink"
@@ -45,27 +62,56 @@ export function ClinicianShell({
             <span className="hidden text-meta text-ink-tertiary md:inline">
               Ridgeview Orthopedics · nurse line
             </span>
-            {breadcrumb ? (
-              <span className="text-meta text-ink-tertiary">/ {breadcrumb}</span>
+            {crumbs && crumbs.length > 0 ? (
+              <nav aria-label="Breadcrumb" className="min-w-0">
+                <ol className="flex flex-wrap items-center gap-x-1.5 text-meta text-ink-tertiary">
+                  {crumbs.map((crumb, index) => {
+                    const last = index === crumbs.length - 1;
+                    return (
+                      <li key={`${crumb.label}-${index}`} className="flex items-center gap-x-1.5">
+                        <span aria-hidden="true">/</span>
+                        {crumb.href && !last ? (
+                          <Link
+                            href={crumb.href}
+                            className="text-ink-secondary underline-offset-4 hover:text-ink hover:underline"
+                          >
+                            {crumb.label}
+                          </Link>
+                        ) : (
+                          <span
+                            className={cn(last && "font-medium text-ink")}
+                            aria-current={last ? "page" : undefined}
+                          >
+                            {crumb.label}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </nav>
             ) : null}
-          </p>
+          </div>
 
           <nav className="flex items-center gap-1" aria-label="Clinician sections">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={item.href === active ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-11 items-center rounded-md px-3 text-label",
-                  item.href === active
-                    ? "bg-wash-strong font-medium text-ink ring-1 ring-inset ring-line-strong"
-                    : "text-ink-secondary hover:bg-wash",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map((item) => {
+              const isActive = item.match(active);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded-md px-3 text-label",
+                    isActive
+                      ? "bg-wash-strong font-medium text-ink ring-1 ring-inset ring-line-strong"
+                      : "text-ink-secondary hover:bg-wash",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <LiveCallStrip />

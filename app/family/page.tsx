@@ -1,6 +1,7 @@
 import { Phone, Send } from "lucide-react";
 import type { Metadata } from "next";
-import { MendMark } from "@/app/components/brand/MendMark";
+import Link from "next/link";
+import { MendLogo } from "@/app/components/brand/MendLogo";
 import { PhoneFrame, resolvePhoneFramed } from "@/app/components/device/PhoneFrame";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { CheckinStrip, type CheckinDay } from "@/app/components/family/CheckinStrip";
@@ -23,17 +24,8 @@ import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
  * /family — the daughter's view, read on a phone at work.
  *
  * She has one question: "is Mom all right, or do I need to drive over?"
- * Everything on this screen answers it; anything that doesn't is left off.
- * No vitals numbers, no rule ids, no thresholds — those live on the
- * clinician view. The level itself still comes from the deterministic
- * engine over the shipped fixtures; only the words are translated for a
- * family reader (app/components/family/copy.ts).
- *
- * Scenario resolution (query param > active console store > green):
- *   /family                    active scenario from the console store
- *   /family?state=urgent       pe fixture (PE cut / harness deep link)
- *   /family?state=attention    drift fixture (amber HR creep / harness)
- *   /family?state=well         green fixture (harness / deep link)
+ * Layout matches the landing family preview: chip → headline → story card →
+ * actions → week strip, sized to one phone viewport (no scroll).
  */
 
 export const dynamic = "force-dynamic";
@@ -43,14 +35,11 @@ export const metadata: Metadata = {
   description: "A calm daily update on Margaret's recovery, from Mend's morning call.",
 };
 
-/** Matches the call view's synthetic patient (schema seed: surgery 4 days ago). */
 const DAY_POST_OP = 4;
 const PROCEDURE = "Hip hemiarthroplasty";
-/** NANP 555 fictional range; never a real number. */
 const MOM_TEL = "+15550100123";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-/** What the fixtures don't model: same voice as the call timeline's turns. */
 const WELL_SUMMARY =
   "She said the pain keeps easing, she slept through the night, and she's been up and about with her walker.";
 
@@ -60,7 +49,6 @@ interface FamilyState {
   history: VitalsReading[];
 }
 
-/** Never blocks the page: missing Supabase just means no recall sentence. */
 async function loadFamilyRecall(): Promise<string> {
   const supabase = getSupabaseClient();
   if (!supabase) return "";
@@ -73,8 +61,6 @@ async function loadFamilyRecall(): Promise<string> {
   }
 }
 
-/** Scenario-appropriate symptom fixtures so the engine path matches the
- * console's pe / green / drift demos — never a hand-authored severity. */
 function symptomsFor(scenario: Scenario): Symptoms {
   if (scenario === "pe") {
     return { breathless: true, chestPain: true, painScore: 4, painControlled: true };
@@ -82,8 +68,6 @@ function symptomsFor(scenario: Scenario): Symptoms {
   return { painScore: 3, painControlled: true, breathless: false };
 }
 
-/** Both verdicts come from the engine over the shipped fixtures — the level
- * on this screen is never authored copy. */
 function loadState(scenario: Scenario): FamilyState {
   const history = scenarioHistory(scenario);
   const findings = evaluateTrends(
@@ -111,9 +95,6 @@ function localDayKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-/** The trailing seven calendar days; a day counts as checked in when any
- * reading in the fixture history lands on it. Presence only — the values
- * on those days never reach this surface. */
 function lastSevenDays(history: VitalsReading[], now: Date): CheckinDay[] {
   const checked = new Set(
     history
@@ -136,7 +117,6 @@ function lastSevenDays(history: VitalsReading[], now: Date): CheckinDay[] {
   return days;
 }
 
-/** The SBAR travels to a clinician by email; it is never rendered here. */
 function forwardHref(state: FamilyState): string {
   const sbar = buildFallbackSbar({
     patient: "Margaret",
@@ -171,60 +151,89 @@ export default async function FamilyPage({
   const recall = await loadFamilyRecall();
   const now = new Date();
   const days = lastSevenDays(state.history, now);
+  const urgent = Boolean(copy.whatHappened);
+  const story = urgent
+    ? [copy.whatHappened, copy.whatMendAsked].filter(Boolean).join(" ")
+    : WELL_SUMMARY;
 
   return (
     <PhoneFrame framed={framed} stage>
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16 md:min-h-0 md:pt-14">
-        <p className="flex items-center gap-2 font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
-          <MendMark size="sm" className="text-ink" />
-          Mend &middot; Recovery updates
-        </p>
-
-        <div className="pt-10">
-          <SeverityChip level={state.decision.level} size="lg" />
+      <main className="mx-auto flex h-full w-full max-w-md flex-col px-5 pt-11 pb-4 md:pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center text-ink"
+            aria-label="Mend home"
+          >
+            <MendLogo
+              variant="lockup"
+              size="sm"
+              wordmarkClassName="text-xl"
+            />
+          </Link>
+          <p className="font-sans text-[11px] font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+            Recovery updates
+          </p>
         </div>
 
-        <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
+        <div className="pt-3">
+          <SeverityChip level={state.decision.level} size="md" />
+        </div>
+
+        <h1 className="pt-3 font-heading text-[1.65rem] leading-tight text-balance text-ink sm:text-heading">
           {copy.headline}
         </h1>
 
-        <p className="pt-5 text-lg text-ink-secondary">
+        <p className="pt-2 text-lg text-ink-secondary">
           Mend called her today at <time>{formatCallTime(now)}</time>.
         </p>
 
-        {copy.whatHappened ? (
-          <>
-            <p className="pt-6 font-serif text-lede text-ink">{copy.whatHappened}</p>
-            <p className="pt-5 font-serif text-lede text-ink">{copy.whatMendAsked}</p>
-            {recall ? (
-              <p className="pt-3 text-lg text-ink-secondary">{recall}</p>
-            ) : null}
+        <div
+          className={
+            urgent
+              ? "mt-4 rounded-2xl border border-severity-red-border bg-severity-red-bg p-3.5"
+              : "mt-4 rounded-2xl border border-line bg-raised p-3.5 shadow-[0_8px_24px_-18px_rgba(28,25,23,0.35)]"
+          }
+        >
+          <p className="font-serif text-lg leading-snug text-ink">{story}</p>
+          {recall ? (
+            <p className="pt-2 text-lg leading-snug text-ink-secondary">{recall}</p>
+          ) : null}
+        </div>
 
-            <div className="flex flex-col gap-3 pt-10">
-              <a
-                href={`tel:${MOM_TEL}`}
-                className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl bg-ink text-lg font-medium text-paper"
-              >
-                <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
-                Call Mom
-              </a>
-              <a
-                href={forwardHref(state)}
-                className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
-              >
-                <Send aria-hidden="true" className="size-5" strokeWidth={2} />
-                Forward the care summary
-              </a>
-            </div>
-          </>
+        {urgent ? (
+          <div className="flex flex-col gap-2.5 pt-4">
+            <a
+              href={`tel:${MOM_TEL}`}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink text-lg font-medium text-paper"
+            >
+              <Phone aria-hidden="true" className="size-4" strokeWidth={2} />
+              Call Mom
+            </a>
+            <a
+              href={forwardHref(state)}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
+            >
+              <Send aria-hidden="true" className="size-4" strokeWidth={2} />
+              Forward the care summary
+            </a>
+          </div>
         ) : (
-          <p className="pt-6 font-serif text-lede text-ink">{WELL_SUMMARY}</p>
+          <div className="pt-4">
+            <a
+              href={`tel:${MOM_TEL}`}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink text-lg font-medium text-paper"
+            >
+              <Phone aria-hidden="true" className="size-4" strokeWidth={2} />
+              Call Mom
+            </a>
+          </div>
         )}
 
-        <div className="mt-auto pt-16">
-          <CheckinStrip days={days} />
-          <p className="pt-8 text-lg text-ink-tertiary">Mend calls her every morning.</p>
-          <MedicalAdviceDisclaimer tone="family" className="pt-6" />
+        <div className="mt-auto space-y-3 pt-4">
+          <CheckinStrip days={days} compact />
+          <p className="text-lg text-ink-tertiary">Mend calls her every morning.</p>
+          <MedicalAdviceDisclaimer tone="quiet" />
         </div>
       </main>
     </PhoneFrame>

@@ -3,7 +3,7 @@
 import { Loader2, Phone } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { MendMark } from "@/app/components/brand/MendMark";
+import { MendLogo } from "@/app/components/brand/MendLogo";
 import { PhoneFrame } from "@/app/components/device/PhoneFrame";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,10 @@ export interface PatientPortalProps {
   level: Severity;
   headline: string;
   lede: string;
+  /** Latest physiologic snapshot for the summary card (patient seat may show numbers). */
+  hrBpm: number;
+  spo2: number;
+  painScore: number;
   /** Phone chrome on md+. False when `?frame=0`. */
   framed?: boolean;
 }
@@ -32,8 +36,8 @@ function CallStatus({ state }: { state: CallActionState }) {
   if (state.kind === "idle") return null;
   if (state.kind === "pending") {
     return (
-      <p className="flex items-center gap-2 pt-4 text-lg text-ink-secondary">
-        <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+      <p className="flex items-center gap-2 text-lg text-ink-secondary">
+        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
         Calling you now…
       </p>
     );
@@ -43,7 +47,7 @@ function CallStatus({ state }: { state: CallActionState }) {
       ? "border-severity-red-border bg-severity-red-bg text-severity-red-fg"
       : "border-line bg-wash text-ink";
   return (
-    <p className={`mt-4 rounded-xl border px-4 py-3 text-lg leading-relaxed ${tone}`}>
+    <p className={`rounded-xl border px-3 py-2.5 text-lg leading-snug ${tone}`}>
       {state.message}
     </p>
   );
@@ -56,6 +60,9 @@ export function PatientPortal({
   level,
   headline,
   lede,
+  hrBpm,
+  spo2,
+  painScore,
   framed = true,
 }: PatientPortalProps) {
   const [callState, setCallState] = useState<CallActionState>({ kind: "idle" });
@@ -90,7 +97,7 @@ export function PatientPortal({
       setCallState({
         kind: "ok",
         message:
-          "Mend is calling you now. Answer on speaker — press any key when you hear the Twilio trial message, then Mend speaks.",
+          "Mend is calling you now. Answer on speaker — press any key at the trial message, then Mend speaks.",
       });
     } catch {
       setCallState({
@@ -102,62 +109,93 @@ export function PatientPortal({
 
   return (
     <PhoneFrame framed={framed} stage>
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16 md:min-h-0 md:pt-14">
-        <p className="flex items-center gap-2 font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
-          <MendMark size="sm" className="text-ink" />
-          Mend &middot; Your recovery
-        </p>
+      <main className="mx-auto flex h-full w-full max-w-md flex-col px-5 pt-11 pb-4 md:pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center text-ink"
+            aria-label="Mend home"
+          >
+            <MendLogo
+              variant="lockup"
+              size="sm"
+              wordmarkClassName="text-xl"
+            />
+          </Link>
+          <p className="font-sans text-[11px] font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+            Your recovery
+          </p>
+        </div>
 
-        <p className="pt-8 text-lg text-ink-secondary">
+        <p className="pt-3 text-lg text-ink-secondary">
           {patientName} · day {dayPostOp} after {procedure.toLowerCase()}
         </p>
 
-        <div className="pt-8">
-          <SeverityChip level={level} size="lg" />
+        <div className="pt-3">
+          <SeverityChip level={level} size="md" />
         </div>
 
-        <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
+        <h1 className="pt-3 font-heading text-[1.65rem] leading-tight text-balance text-ink sm:text-heading">
           {headline}
         </h1>
 
-        <p className="pt-5 font-serif text-lede text-ink">{lede}</p>
+        <div className="mt-4 rounded-2xl border border-line bg-raised p-3.5 shadow-[0_8px_24px_-18px_rgba(28,25,23,0.35)]">
+          <p className="font-serif text-lg leading-snug text-ink">{lede}</p>
+          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line pt-3">
+            {[
+              ["HR", String(Math.round(hrBpm))],
+              ["SpO₂", `${Math.round(spo2)}%`],
+              ["Pain", String(painScore)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-wash px-2.5 py-2">
+                <p className="text-[11px] font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+                  {label}
+                </p>
+                <p className="numeric pt-0.5 text-lg font-medium text-ink">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-3 pt-10">
+        <div className="flex flex-col gap-2.5 pt-4">
           <Button
             type="button"
             size="lg"
             onClick={() => void requestCheckIn()}
             disabled={callState.kind === "pending"}
-            className="min-h-14 w-full rounded-xl text-lg"
+            className="min-h-12 w-full rounded-xl text-lg"
           >
             {callState.kind === "pending" ? (
-              <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
             ) : (
-              <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
+              <Phone aria-hidden="true" className="size-4" strokeWidth={2} />
             )}
             Request a check-in call
           </Button>
           <Link
             href="/family"
-            className="flex min-h-14 items-center justify-center rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
+            className="flex min-h-12 items-center justify-center rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
           >
             Open family updates
           </Link>
         </div>
 
-        <CallStatus state={callState} />
+        <div className="pt-3">
+          <CallStatus state={callState} />
+        </div>
 
-        <p className="pt-6 text-lg text-ink-secondary">
-          <span className="font-medium text-ink">Twilio trial:</span> answer on
-          speaker, then <span className="font-medium text-ink">press any key</span>{" "}
-          when you hear the trial message — Mend starts after that.
-        </p>
+        {callState.kind === "idle" ? (
+          <p className="pt-2 text-lg leading-snug text-ink-secondary">
+            <span className="font-medium text-ink">Twilio trial:</span> answer on
+            speaker, then press any key when you hear the trial message.
+          </p>
+        ) : null}
 
-        <div className="mt-auto pt-16">
+        <div className="mt-auto space-y-2 pt-3">
           <p className="text-lg text-ink-tertiary">
             Mend can call you now when you ask, and every morning.
           </p>
-          <MedicalAdviceDisclaimer tone="family" className="pt-6" />
+          <MedicalAdviceDisclaimer tone="quiet" />
         </div>
       </main>
     </PhoneFrame>

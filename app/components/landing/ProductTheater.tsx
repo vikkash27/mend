@@ -333,10 +333,10 @@ function TruthStage({ reduce }: { reduce: boolean }) {
         </div>
 
         {/* Clinician board */}
-        <div className="flex flex-col rounded-xl border border-line bg-raised p-3">
+        <div className="flex flex-col rounded-xl border border-line bg-raised p-3 shadow-[0_12px_28px_-22px_rgba(28,25,23,0.4)]">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-heading text-label text-ink">Clinician hub</p>
-            <span className="text-meta text-ink-tertiary">Worklist</span>
+            <p className="font-heading text-label text-ink">Patient chart</p>
+            <span className="text-meta text-ink-tertiary">Overview</span>
           </div>
           <div className="mt-3 rounded-lg border border-line bg-wash px-3 py-2.5">
             <div className="flex items-start justify-between gap-2">

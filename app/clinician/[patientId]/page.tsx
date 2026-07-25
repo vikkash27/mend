@@ -7,10 +7,10 @@ import { parseChartTab } from "@/app/components/clinician/chart-tabs";
 import { buildRoster, findPatient, rosterIds } from "@/lib/sim/roster";
 
 /**
- * /clinician/[patientId] — patient workspace.
+ * /clinician/[patientId] — one patient chart.
  *
- * Server-loads the roster patient and CallStage props; the client PatientChart
- * hosts tabs, in-place Live mode, Call now, Ops, and the xl worklist column.
+ * Full-width tabbed workspace (no side roster). Directory lives at
+ * /clinician/patients; breadcrumbs navigate back.
  */
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,13 @@ export default async function PatientPage({
   const initialLiveFocus = sp.live === "1";
 
   return (
-    <ClinicianShell active="/clinician" breadcrumb={patient.name}>
+    <ClinicianShell
+      active={`/clinician/${patient.id}`}
+      crumbs={[
+        { label: "Patients", href: "/clinician/patients" },
+        { label: patient.name },
+      ]}
+    >
       <PatientChart
         patient={patient}
         patients={patients}

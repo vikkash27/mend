@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Loader2, Phone } from "lucide-react";
+import { AlertTriangle, Loader2, Phone, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -37,7 +37,6 @@ import {
   TREND_WINDOW_DAYS,
   buildTrendSeries,
 } from "./trend-series";
-import { Worklist } from "./Worklist";
 
 type CallActionState =
   | { kind: "idle" }
@@ -97,6 +96,7 @@ export function PatientChart({
   initialLiveFocus,
 }: {
   patient: RosterPatient;
+  /** Other panel patients — compact switcher only (not a side table). */
   patients: RosterPatient[];
   nowIso: string;
   callStageProps: LoadedCallStageProps;
@@ -189,13 +189,6 @@ export function PatientChart({
     router.replace(chartTabHref(patient.id, activeTab));
   }, [activeTab, patient.id, router]);
 
-  const onSelectPatient = useCallback(
-    (patientId: string) => {
-      router.push(chartTabHref(patientId, activeTab));
-    },
-    [activeTab, router],
-  );
-
   const latest = patient.latest;
   const envelope = patient.phase.normalEnvelope;
   const history = [...patient.checkins].reverse();
@@ -208,18 +201,8 @@ export function PatientChart({
   const showLivePane = liveActive && focusLive;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <aside className="hidden xl:block pt-8">
-        <Worklist
-          patients={patients}
-          now={now}
-          selectedId={patient.id}
-          onSelect={onSelectPatient}
-        />
-      </aside>
-
-      <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 pt-8 pb-2">
+    <div className="min-w-0 space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-8 pb-2">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-heading text-heading text-ink">{patient.name}</h1>
@@ -252,13 +235,42 @@ export function PatientChart({
               {patient.closedEscalations} reviewed
             </p>
           </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/clinician"
-                className="inline-flex min-h-11 items-center rounded-md border border-line px-4 text-label text-ink-secondary hover:bg-wash xl:hidden"
+          <div className="flex w-full max-w-xl flex-col gap-2 sm:w-auto sm:items-end">
+            <p className="max-w-sm text-meta text-ink-secondary sm:text-right">
+              <span className="font-medium text-ink">Twilio trial:</span> answer on
+              speaker, then <span className="font-medium text-ink">press any key</span>{" "}
+              when you hear the trial message.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <label className="sr-only" htmlFor="patient-switcher">
+                Switch patient
+              </label>
+              <select
+                id="patient-switcher"
+                value={patient.id}
+                onChange={(e) => {
+                  router.push(chartTabHref(e.target.value, activeTab));
+                }}
+                className="min-h-11 max-w-[14rem] rounded-md border border-line bg-raised px-3 text-label text-ink"
               >
-                Back to hub
+                {patients.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/clinician/patients"
+                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-4 text-label text-ink-secondary hover:bg-wash"
+              >
+                <Users aria-hidden="true" className="size-4" />
+                All patients
+              </Link>
+              <Link
+                href="/family"
+                className="inline-flex min-h-11 items-center rounded-md border border-line px-4 text-label text-ink-secondary hover:bg-wash"
+              >
+                Family view
               </Link>
               <Button
                 type="button"
@@ -326,22 +338,23 @@ export function PatientChart({
             <div role="tabpanel" className="space-y-6 pt-2">
               {activeTab === "overview" ? (
                 <div className="space-y-5">
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
                     <SeverityPanel
                       level={latest.decision.level}
                       headline={latest.decision.condition ?? undefined}
+                      className="self-start"
                     >
                       <p className="font-serif text-lede leading-snug text-ink-secondary">
                         {latest.decision.action}
                       </p>
-                      <p className="numeric pt-2 text-meta">
+                      <p className="numeric text-meta">
                         Day {latest.dayPostOp} check-in at {clockTime(latest.at)} ·{" "}
                         {timeAgo(latest.at, now)} · fired{" "}
                         {latest.decision.firedRules.join(", ") || "no rule"}
                       </p>
                     </SeverityPanel>
 
-                    <Panel className="p-5">
+                    <Panel className="self-start p-5">
                       <SectionHeading
                         title="Latest reading"
                         meta={`day ${latest.dayPostOp} · ${patient.phase.name}`}
@@ -543,7 +556,6 @@ export function PatientChart({
             </div>
           </details>
         </section>
-      </div>
     </div>
   );
 }

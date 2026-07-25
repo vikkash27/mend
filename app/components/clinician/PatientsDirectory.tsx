@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RosterPatient } from "@/lib/sim/roster";
 import { ActionBoard } from "./ActionBoard";
 import { HubOpsPanel } from "./HubOpsPanel";
+import { SectionHeading } from "./ClinicianShell";
 import { fullDate } from "./format";
-import { NeedsAttention } from "./NeedsAttention";
+import { Worklist } from "./Worklist";
 
-export function ClinicianHub({
+/**
+ * Full patient directory: call actions + the complete worklist table.
+ */
+export function PatientsDirectory({
   patients,
   nowIso,
   persistence,
@@ -17,13 +20,12 @@ export function ClinicianHub({
   nowIso: string;
   persistence: string;
 }) {
+  const now = useMemo(() => new Date(nowIso), [nowIso]);
   const [opsOpen, setOpsOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash === "#ops") {
-      setOpsOpen(true);
-    }
+    if (window.location.hash === "#ops") setOpsOpen(true);
     const onHash = () => {
       if (window.location.hash === "#ops") setOpsOpen(true);
     };
@@ -35,16 +37,10 @@ export function ClinicianHub({
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-8 pb-2">
         <div className="space-y-1.5">
-          <h1 className="font-heading text-heading text-ink">Clinician hub</h1>
+          <h1 className="font-heading text-heading text-ink">Patients</h1>
           <p className="max-w-3xl text-label text-ink-secondary">
-            What needs attention and what to do next. Open{" "}
-            <Link
-              href="/clinician/patients"
-              className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
-            >
-              Patients
-            </Link>{" "}
-            for the full panel directory and every chart.
+            Full panel, worst first. Open a row for that patient&apos;s chart —
+            overview, readings, handoff, billing, and audit.
           </p>
         </div>
         <p className="numeric text-meta text-ink-tertiary">
@@ -54,22 +50,12 @@ export function ClinicianHub({
 
       <ActionBoard patients={patients} />
 
-      <NeedsAttention patients={patients} />
-
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-raised px-5 py-4 shadow-card">
-        <div className="space-y-1">
-          <p className="text-label font-medium text-ink">Panel directory</p>
-          <p className="text-meta text-ink-secondary">
-            {patients.length} monitored patients — open the full worklist to pick a
-            chart or place a call.
-          </p>
-        </div>
-        <Link
-          href="/clinician/patients"
-          className="inline-flex min-h-11 items-center rounded-md bg-ink px-4 text-label font-medium text-paper hover:bg-ink/90"
-        >
-          View all patients
-        </Link>
+      <div className="space-y-4">
+        <SectionHeading
+          title="Panel directory"
+          meta={`${patients.length} monitored · worst first`}
+        />
+        <Worklist patients={patients} now={now} />
       </div>
 
       <section id="ops" className="scroll-mt-24 space-y-4 border-t border-line pt-8">
@@ -92,12 +78,6 @@ export function ClinicianHub({
           </div>
         </details>
       </section>
-
-      <p className="max-w-4xl text-meta text-ink-tertiary">
-        Synthetic patients. No protected health information is present in this
-        repository, and no database credentials are required to render this page —
-        with Supabase configured the same components read stored check-ins instead.
-      </p>
     </div>
   );
 }

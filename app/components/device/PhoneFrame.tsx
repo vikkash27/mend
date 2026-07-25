@@ -55,19 +55,20 @@ export function PhoneFrame({
 
   if (stage) {
     // Single child tree: frame styles only at md+ so hydration and client
-    // state (patient call button) are not duplicated.
+    // state (patient call button) are not duplicated. Screen content is
+    // sized to the frame (no inner scroll) — portals must fit one viewport.
     return (
       <div
         className={cn(
-          "min-h-dvh",
-          "md:flex md:items-start md:justify-center md:bg-[radial-gradient(ellipse_at_50%_0%,var(--color-wash-strong)_0%,var(--color-wash)_45%,var(--color-paper)_100%)] md:px-6 md:py-10",
+          "h-dvh overflow-hidden",
+          "md:flex md:h-auto md:min-h-dvh md:items-center md:justify-center md:overflow-visible md:bg-[radial-gradient(ellipse_at_50%_0%,var(--color-wash-strong)_0%,var(--color-wash)_45%,var(--color-paper)_100%)] md:px-6 md:py-8",
           className,
         )}
       >
         <div
           className={cn(
-            "relative mx-auto w-full",
-            "md:max-w-[440px] md:rounded-[2.4rem] md:bg-ink md:p-[11px] md:shadow-[0_24px_60px_-28px_rgba(28,25,23,0.45)]",
+            "relative mx-auto h-full w-full",
+            "md:h-[min(760px,88dvh)] md:max-w-[400px] md:rounded-[2.4rem] md:bg-ink md:p-[11px] md:shadow-[0_28px_70px_-32px_rgba(28,25,23,0.5)]",
           )}
         >
           <div
@@ -76,14 +77,12 @@ export function PhoneFrame({
           />
           <div
             className={cn(
-              "relative bg-paper",
-              "md:min-h-[min(820px,88dvh)] md:overflow-hidden md:rounded-[1.9rem]",
+              "relative h-full overflow-hidden bg-[linear-gradient(180deg,var(--color-wash)_0%,var(--color-paper)_22%)]",
+              "md:rounded-[1.9rem]",
               contentClassName,
             )}
           >
-            <div className="md:h-full md:overflow-y-auto md:overscroll-contain">
-              {children}
-            </div>
+            <div className="h-full overflow-hidden">{children}</div>
           </div>
         </div>
       </div>

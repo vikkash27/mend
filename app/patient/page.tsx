@@ -68,6 +68,8 @@ export default async function PatientPage({
   const decision = loadDecision(scenario);
   const copy = patientCopy(decision);
   const framed = resolvePhoneFramed(params.frame);
+  const vitals = scenarioVitals(scenario, new Date());
+  const symptoms = symptomsFor(scenario);
 
   return (
     <PatientPortal
@@ -77,6 +79,9 @@ export default async function PatientPage({
       level={decision.level}
       headline={copy.headline}
       lede={copy.lede}
+      hrBpm={vitals.hr ?? 78}
+      spo2={vitals.spo2 ?? 97}
+      painScore={symptoms.painScore ?? 0}
       framed={framed}
     />
   );

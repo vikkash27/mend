@@ -70,13 +70,16 @@ export function SeverityPanel({
     <div
       data-severity={level}
       style={severityStyle(level)}
-      className={cn("flex gap-4 rounded-xl border p-5 sm:p-6", className)}
+      className={cn(
+        "flex items-start gap-4 rounded-xl border p-5 sm:p-6 h-fit",
+        className,
+      )}
     >
       <Icon aria-hidden="true" className="mt-0.5 size-7 shrink-0" strokeWidth={1.75} />
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 flex-1 space-y-2">
         <p className="font-heading text-subhead">{text}</p>
         {children ? (
-          <div className="text-body text-ink-secondary">{children}</div>
+          <div className="space-y-2 text-body text-ink-secondary">{children}</div>
         ) : null}
       </div>
     </div>

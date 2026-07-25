@@ -14,7 +14,7 @@ export function Surfaces() {
   return (
     <section
       id="product"
-      className="scroll-mt-8 border-t border-line px-6 py-14 sm:px-10 sm:py-16 lg:px-14 lg:py-20"
+      className="scroll-mt-8 border-t border-line bg-[linear-gradient(180deg,var(--color-paper)_0%,var(--color-wash)_18%,var(--color-paper)_100%)] px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24"
     >
       <motion.div
         className="mx-auto max-w-6xl"

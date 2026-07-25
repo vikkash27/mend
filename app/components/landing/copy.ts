@@ -81,7 +81,7 @@ export const landingCopy = {
     eyebrow: "See the seats",
     title: "One morning event. Three audiences.",
     support:
-      "The clinician hub is the working surface. Family and patient phones reflect the same decision in plain language.",
+      "Watch the product move — clinician directory and chart, family update, patient call request — each seat showing the same clinical truth.",
   },
   close: {
     title: "Built for the hardest week after surgery.",
@@ -95,7 +95,7 @@ export const PRODUCT_SURFACES = [
   {
     href: "/clinician",
     label: "Clinician hub",
-    note: "Daily worklist and live call",
+    note: "Actions, patients, and live call",
     quiet: true,
   },
   {

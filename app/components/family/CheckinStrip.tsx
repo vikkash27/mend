@@ -29,28 +29,49 @@ function caption(days: readonly CheckinDay[]): string {
   return `She's checked in ${count} of the last ${days.length} days.`;
 }
 
-export function CheckinStrip({ days }: { days: readonly CheckinDay[] }) {
+export function CheckinStrip({
+  days,
+  compact = false,
+}: {
+  days: readonly CheckinDay[];
+  /** Hide the prose caption; keep the week row only (phone viewport fit). */
+  compact?: boolean;
+}) {
   return (
-    <section aria-label="Check-ins over the last seven days">
+    <section
+      aria-label="Check-ins over the last seven days"
+      className={
+        compact
+          ? "rounded-2xl border border-line bg-raised/80 px-2.5 py-3"
+          : undefined
+      }
+    >
       <div className="flex items-start justify-between">
         {days.map((day) => (
-          <div key={day.key} className="flex flex-col items-center gap-2">
+          <div key={day.key} className="flex flex-col items-center gap-1.5">
             <span
               aria-hidden="true"
               className={cn(
-                "flex size-9 items-center justify-center rounded-full",
+                "flex items-center justify-center rounded-full",
+                compact ? "size-7" : "size-9",
                 day.checkedIn
                   ? "bg-wash-strong text-ink-secondary"
                   : "border border-line text-transparent",
-                day.isToday && "ring-1 ring-line-strong ring-offset-2 ring-offset-paper",
+                day.isToday &&
+                  "ring-1 ring-line-strong ring-offset-1 ring-offset-paper",
               )}
             >
-              {day.checkedIn ? <Check className="size-4" strokeWidth={2.5} /> : null}
+              {day.checkedIn ? (
+                <Check
+                  className={compact ? "size-3.5" : "size-4"}
+                  strokeWidth={2.5}
+                />
+              ) : null}
             </span>
             <span
               aria-hidden="true"
               className={cn(
-                "text-family-label",
+                compact ? "text-[11px]" : "text-family-label",
                 day.isToday ? "font-medium text-ink-secondary" : "text-ink-tertiary",
               )}
             >
@@ -62,7 +83,11 @@ export function CheckinStrip({ days }: { days: readonly CheckinDay[] }) {
           </div>
         ))}
       </div>
-      <p className="pt-4 text-lg text-ink-secondary">{caption(days)}</p>
+      {compact ? (
+        <p className="sr-only">{caption(days)}</p>
+      ) : (
+        <p className="pt-4 text-lg text-ink-secondary">{caption(days)}</p>
+      )}
     </section>
   );
 }

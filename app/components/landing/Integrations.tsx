@@ -88,17 +88,23 @@ function DeviceDemoShell({
   return (
     <div
       aria-hidden="true"
-      className="relative overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_20px_50px_-32px_rgba(28,25,23,0.35)]"
+      className="relative overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_28px_60px_-36px_rgba(28,25,23,0.42)]"
     >
-      <div className="flex items-center gap-1.5 border-b border-line bg-wash px-4 py-2.5">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_0%_0%,var(--color-wash-strong)_0%,transparent_45%)]"
+      />
+      <div className="relative flex items-center gap-1.5 border-b border-line bg-gradient-to-b from-wash to-wash/60 px-4 py-2.5">
         <span className="size-2 rounded-full bg-line-strong" />
         <span className="size-2 rounded-full bg-line-strong" />
         <span className="size-2 rounded-full bg-line-strong" />
         <span className="ml-3 text-meta text-ink-tertiary">
-          Clinician hub · {label}
+          Live feature · {label}
         </span>
       </div>
-      <div className="min-h-[340px] p-4 sm:min-h-[360px] sm:p-5">{children}</div>
+      <div className="relative min-h-[360px] p-4 sm:min-h-[380px] sm:p-5">
+        {children}
+      </div>
     </div>
   );
 }
