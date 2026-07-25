@@ -17,8 +17,20 @@ visible rather than merely assert it.
 
 ## Pre-flight 1 — credentials
 
-All values go in `.env` at the repo root, which is gitignored. There is no `.env.local`;
-don't create one, as it would silently override `.env`.
+All values go in `.env` at the repo root, which is gitignored.
+
+A `.env.local` also exists — `vercel link` created it and it holds only a `VERCEL_OIDC_TOKEN`.
+Leave it alone. Next.js gives `.env.local` higher precedence than `.env`, but only for keys it
+actually defines, so it will not shadow anything you add to `.env`. Don't add your keys there,
+because keeping one file authoritative is what stops you debugging a value that was being
+overridden all along.
+
+For the deployed site, local files are irrelevant — Vercel needs its own copy:
+
+```bash
+vercel env add ANTHROPIC_API_KEY production   # repeat per variable
+vercel --prod                                  # redeploy to pick them up
+```
 
 **These aren't independent.** The ElevenLabs agent can't be finished until *after* Vercel is
 deployed and the Twilio number is bought, because the agent config needs the live
