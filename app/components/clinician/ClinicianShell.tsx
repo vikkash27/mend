@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MendLogo } from "@/app/components/brand/MendLogo";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { cn } from "@/lib/utils";
 import { LiveCallStrip } from "./LiveCallStrip";
@@ -34,10 +35,11 @@ export function ClinicianShell({
         <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center gap-x-8 gap-y-2 px-6 md:px-8">
           <p className="flex items-baseline gap-3 py-2">
             <Link
-              href="/clinician"
-              className="inline-flex min-h-11 min-w-11 items-center font-heading text-xl leading-none text-ink"
+              href="/"
+              className="inline-flex min-h-11 items-center text-ink"
+              aria-label="Mend home"
             >
-              Mend
+              <MendLogo variant="lockup" size="sm" wordmarkClassName="text-xl" />
             </Link>
             <span className="eyebrow">Clinician</span>
             {breadcrumb ? (

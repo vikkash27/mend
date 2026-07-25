@@ -27,7 +27,7 @@ export function Close() {
         </motion.h2>
         <motion.p
           variants={fadeUp}
-          className="mt-4 max-w-xl font-serif text-lede text-ink-secondary"
+          className="mt-4 max-w-xl text-body-lg text-ink-secondary"
         >
           {c.support}
         </motion.p>

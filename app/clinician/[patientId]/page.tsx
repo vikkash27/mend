@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { SeverityPanel } from "@/components/ui/severity-chip";
 import { DecisionAudit } from "@/app/components/clinician/AuditTrail";
 import { BillingPanel } from "@/app/components/clinician/BillingPanel";
+import { ChartNotes } from "@/app/components/clinician/ChartNotes";
 import {
   ClinicianShell,
   Panel,
@@ -27,7 +28,8 @@ import { findPatient, rosterIds } from "@/lib/sim/roster";
  * what is the verdict right now, what would I paste into the note, what is
  * this costing and earning, what has the trajectory been, and then — for the
  * one person in ten who wants it — exactly which rule read exactly which
- * number to arrive at the verdict at the top.
+ * number to arrive at the verdict at the top. Clinician free-text notes sit
+ * beside the SBAR so documentation stays on the chart.
  *
  * Nothing on this page needs credentials. The roster is synthetic and the
  * SBAR is the deterministic fallback that `generateSbar()` produces without
@@ -131,6 +133,8 @@ export default async function PatientPage({
               <SbarCard sbar={latest.sbar} patientName={patient.name} />
             </div>
           </Panel>
+
+          <ChartNotes patientId={patient.id} patientName={patient.name} />
         </div>
 
         <Panel className="p-5">

@@ -5,6 +5,7 @@ import { Close } from "./Close";
 import { Gap } from "./Gap";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
+import { Integrations } from "./Integrations";
 import { LandingNav } from "./LandingNav";
 import { Surfaces } from "./Surfaces";
 import { Trust } from "./Trust";
@@ -30,6 +31,7 @@ export function LandingPage() {
         <Hero />
         <Gap />
         <HowItWorks />
+        <Integrations />
         <Trust />
         <Surfaces />
         <Close />

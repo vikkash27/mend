@@ -45,6 +45,7 @@ pnpm-debug.log*
 .pnpm-store/
 .superpowers/
 .visual/
+.landing-capture/
 
 # --- local worktrees ---
 .worktrees/

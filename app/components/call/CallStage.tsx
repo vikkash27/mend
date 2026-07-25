@@ -1,7 +1,9 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MendLogo } from "@/app/components/brand/MendLogo";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Badge } from "@/components/ui/badge";
 import type {
@@ -241,7 +243,13 @@ export function CallStage({
         <div className={cn("flex flex-wrap items-center", isHub ? "gap-x-4 gap-y-1" : "gap-x-6 gap-y-2")}>
           {!isHub ? (
             <>
-              <p className="font-heading text-subhead leading-none text-ink">Mend</p>
+              <Link
+                href="/"
+                className="inline-flex items-center text-ink"
+                aria-label="Mend home"
+              >
+                <MendLogo variant="lockup" size="sm" wordmarkClassName="text-subhead" />
+              </Link>
               <span aria-hidden="true" className="hidden h-6 w-px bg-line-strong sm:block" />
             </>
           ) : null}

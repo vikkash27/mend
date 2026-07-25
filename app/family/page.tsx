@@ -1,5 +1,7 @@
 import { Phone, Send } from "lucide-react";
 import type { Metadata } from "next";
+import { MendMark } from "@/app/components/brand/MendMark";
+import { PhoneFrame, resolvePhoneFramed } from "@/app/components/device/PhoneFrame";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { CheckinStrip, type CheckinDay } from "@/app/components/family/CheckinStrip";
 import { familyCopy } from "@/app/components/family/copy";
@@ -162,6 +164,7 @@ export default async function FamilyPage({
   const params = await searchParams;
   const activeScenario = await loadActiveScenario();
   const scenario = resolveFamilyScenario(first(params.state), activeScenario);
+  const framed = resolvePhoneFramed(params.frame);
 
   const state = loadState(scenario);
   const copy = familyCopy(state.decision, state.findings);
@@ -170,57 +173,60 @@ export default async function FamilyPage({
   const days = lastSevenDays(state.history, now);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16">
-      <p className="font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
-        Mend &middot; Recovery updates
-      </p>
+    <PhoneFrame framed={framed} stage>
+      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16 md:min-h-0 md:pt-14">
+        <p className="flex items-center gap-2 font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+          <MendMark size="sm" className="text-ink" />
+          Mend &middot; Recovery updates
+        </p>
 
-      <div className="pt-10">
-        <SeverityChip level={state.decision.level} size="lg" />
-      </div>
+        <div className="pt-10">
+          <SeverityChip level={state.decision.level} size="lg" />
+        </div>
 
-      <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
-        {copy.headline}
-      </h1>
+        <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
+          {copy.headline}
+        </h1>
 
-      <p className="pt-5 text-lg text-ink-secondary">
-        Mend called her today at <time>{formatCallTime(now)}</time>.
-      </p>
+        <p className="pt-5 text-lg text-ink-secondary">
+          Mend called her today at <time>{formatCallTime(now)}</time>.
+        </p>
 
-      {copy.whatHappened ? (
-        <>
-          <p className="pt-6 font-serif text-lede text-ink">{copy.whatHappened}</p>
-          <p className="pt-5 font-serif text-lede text-ink">{copy.whatMendAsked}</p>
-          {recall ? (
-            <p className="pt-3 text-lg text-ink-secondary">{recall}</p>
-          ) : null}
+        {copy.whatHappened ? (
+          <>
+            <p className="pt-6 font-serif text-lede text-ink">{copy.whatHappened}</p>
+            <p className="pt-5 font-serif text-lede text-ink">{copy.whatMendAsked}</p>
+            {recall ? (
+              <p className="pt-3 text-lg text-ink-secondary">{recall}</p>
+            ) : null}
 
-          <div className="flex flex-col gap-3 pt-10">
-            <a
-              href={`tel:${MOM_TEL}`}
-              className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl bg-ink text-lg font-medium text-paper"
-            >
-              <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
-              Call Mom
-            </a>
-            <a
-              href={forwardHref(state)}
-              className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
-            >
-              <Send aria-hidden="true" className="size-5" strokeWidth={2} />
-              Forward the care summary
-            </a>
-          </div>
-        </>
-      ) : (
-        <p className="pt-6 font-serif text-lede text-ink">{WELL_SUMMARY}</p>
-      )}
+            <div className="flex flex-col gap-3 pt-10">
+              <a
+                href={`tel:${MOM_TEL}`}
+                className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl bg-ink text-lg font-medium text-paper"
+              >
+                <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
+                Call Mom
+              </a>
+              <a
+                href={forwardHref(state)}
+                className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
+              >
+                <Send aria-hidden="true" className="size-5" strokeWidth={2} />
+                Forward the care summary
+              </a>
+            </div>
+          </>
+        ) : (
+          <p className="pt-6 font-serif text-lede text-ink">{WELL_SUMMARY}</p>
+        )}
 
-      <div className="mt-auto pt-16">
-        <CheckinStrip days={days} />
-        <p className="pt-8 text-lg text-ink-tertiary">Mend calls her every morning.</p>
-        <MedicalAdviceDisclaimer tone="family" className="pt-6" />
-      </div>
-    </main>
+        <div className="mt-auto pt-16">
+          <CheckinStrip days={days} />
+          <p className="pt-8 text-lg text-ink-tertiary">Mend calls her every morning.</p>
+          <MedicalAdviceDisclaimer tone="family" className="pt-6" />
+        </div>
+      </main>
+    </PhoneFrame>
   );
 }

@@ -11,14 +11,33 @@ export const fadeUp: Variants = {
   },
 };
 
+/** Scale-up on scroll — use for spotlight panels. */
+export const growIn: Variants = {
+  hidden: { opacity: 0, scale: 0.92, y: 20 },
+  show: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
 export const staggerContainer: Variants = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.08, delayChildren: 0.06 },
+    transition: { staggerChildren: 0.1, delayChildren: 0.05 },
+  },
+};
+
+export const staggerFast: Variants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.04 },
   },
 };
 
 export const viewportOnce = { once: true, amount: 0.25 } as const;
+export const viewportSpotlight = { once: true, amount: 0.35 } as const;
 
 export function useLandingMotion() {
   const reduce = Boolean(useReducedMotion());
@@ -26,14 +45,22 @@ export function useLandingMotion() {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { duration: 0.2 } },
   };
+  const reducedGrow: Variants = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { duration: 0.2 } },
+  };
   return {
     reduce,
-    // Reduced-motion: paint immediately (no scroll-gated travel / fade-in).
     initial: reduce ? ("show" as const) : ("hidden" as const),
     fadeUp: reduce ? reducedFade : fadeUp,
+    growIn: reduce ? reducedGrow : growIn,
     staggerContainer: reduce
       ? ({ hidden: {}, show: {} } satisfies Variants)
       : staggerContainer,
+    staggerFast: reduce
+      ? ({ hidden: {}, show: {} } satisfies Variants)
+      : staggerFast,
     viewportOnce,
+    viewportSpotlight,
   };
 }

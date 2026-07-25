@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { MendLogo } from "@/app/components/brand/MendLogo";
 import { landingCopy } from "./copy";
 import { HeroProductPlane } from "./HeroProductPlane";
 import { useLandingMotion } from "./motion";
@@ -18,12 +19,15 @@ export function Hero() {
           animate="show"
           className="max-w-xl"
         >
-          <motion.p
-            variants={fadeUp}
-            className="font-heading text-display tracking-tight text-ink"
-          >
-            {landingCopy.brand}
-          </motion.p>
+          <motion.div variants={fadeUp} className="text-ink">
+            <MendLogo
+              variant="lockup"
+              size="xl"
+              className="gap-4"
+              markClassName="size-12 sm:size-14"
+              wordmarkClassName="text-display"
+            />
+          </motion.div>
           <motion.h1
             variants={fadeUp}
             className="mt-6 font-heading text-heading tracking-tight text-ink sm:text-title"
@@ -32,7 +36,7 @@ export function Hero() {
           </motion.h1>
           <motion.p
             variants={fadeUp}
-            className="mt-5 max-w-md font-serif text-lede text-ink-secondary"
+            className="mt-5 max-w-md text-body-lg text-ink-secondary"
           >
             {landingCopy.support}
           </motion.p>

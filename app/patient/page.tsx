@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { resolvePhoneFramed } from "@/app/components/device/PhoneFrame";
 import { PatientPortal } from "@/app/components/patient/PatientPortal";
 import { patientCopy } from "@/app/components/patient/copy";
 import { composeDecision } from "@/lib/clinical/compose";
@@ -66,6 +67,7 @@ export default async function PatientPage({
   const scenario = resolveFamilyScenario(first(params.state), activeScenario);
   const decision = loadDecision(scenario);
   const copy = patientCopy(decision);
+  const framed = resolvePhoneFramed(params.frame);
 
   return (
     <PatientPortal
@@ -75,6 +77,7 @@ export default async function PatientPage({
       level={decision.level}
       headline={copy.headline}
       lede={copy.lede}
+      framed={framed}
     />
   );
 }
