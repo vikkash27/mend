@@ -1,48 +1,72 @@
 # Agent handoff — Mend
 
-Written 2026-07-25 ~15:35 BST (updated after P1 correctness wave). Hackathon demo is
-**tomorrow (Sunday 26 July)**, judged by four YC alumni building medtech companies. First
-prize is a guaranteed YC interview.
+Written 2026-07-25 ~15:35 BST; **updated 2026-07-25 evening** after Amplifier voice
+biomarkers (Tasks 1–12). Hackathon demo is **tomorrow (Sunday 26 July)**, judged by four
+YC alumni building medtech companies. First prize is a guaranteed YC interview.
 
-Read this, then `docs/superpowers/plans/2026-07-25-mend-rev2.md` (the implementation plan and
-binding constraints) and `docs/demo-runbook.md` (stage sequence, credentials, fallbacks).
+Read this, then `docs/superpowers/plans/2026-07-25-mend-rev2.md` (core product plan),
+`docs/superpowers/plans/2026-07-25-amplifier-voice-biomarkers.md` (Amplifier path), and
+`docs/demo-runbook.md` (stage sequence, credentials, fallbacks).
 
 ---
 
 ## 1. State right now
 
-All 21 planned tasks are built. **P1 correctness gaps from the prior handoff are fixed** on
-branch `fix/p1-correctness` (worktree `.worktrees/p1-correctness`). Tip of that branch is
-`9e7954f` (plus any docs commit after). Base was `f022219` on `main`.
+Core Mend (21 planned tasks + P1 correctness) is in place. **Amplifier post-call voice
+biomarkers (Tasks 1–12) are built** on branch `feat/amplifier-voice-biomarkers` in worktree
+`.worktrees/amplifier-voice-biomarkers`. Mid-call triage stays symptoms/vitals-only; after a
+voice check-in with `conversationId`, Mend fetches ElevenLabs audio → Amplifier V2
+**use-case** `respiratory` + `cognitive` → maps into `evaluate()` → updates
+`checkins.voice_biomarkers` + decision. Clinician chart shows a biomarkers panel.
 
-| Check | Expected (verified on worktree) |
+| Check | Expected (verified on Amplifier worktree 2026-07-25) |
 |---|---|
-| `npx tsc --noEmit` | clean |
-| `npm test` | 464 passing / 41 files |
+| `npx tsc --noEmit` | clean (exit 0) |
+| `npm test` | **637 passing / 65 files** (posttest vignettes 23/23) |
 | `npm run build` | not re-run this session — run before deploy |
-| `node scripts/visual-check.mjs` | now also captures `/family?state=urgent` |
+| `node scripts/visual-check.mjs` | captures `/family?state=urgent` (from P1 wave) |
 
 **Deployed:** https://mend-ten.vercel.app — still the prior deploy until this branch is merged
 and redeployed. Vercel project `mend` under `vikkashs-projects`.
 
-**Git:** work happens on `fix/p1-correctness` in `.worktrees/p1-correctness`. Do **not**
-assume the primary checkout's branch is stable — a teammate has checked out `main` mid-task
-before. `origin` = `yashs03-hub/mend`, `fork` = `vikkash27/mend`.
+**Git (current Amplifier work):** branch `feat/amplifier-voice-biomarkers`, worktree
+`.worktrees/amplifier-voice-biomarkers`. Do **not** assume the primary checkout's branch is
+stable. `origin` = `yashs03-hub/mend`, `fork` = `vikkash27/mend`. Older P1 work lived on
+`fix/p1-correctness` in `.worktrees/p1-correctness`.
 
 **Routes:** `/` launch pad · `/call` demo peak · `/family` · `/clinician` ·
 `/clinician/engine` vignette suite · `/console` operator surface (`Ctrl/⌘⇧M`) · `/styleguide`.
 
+### Amplifier — ops before live demo
+
+1. **Supabase** (existing DBs that already ran `schema.sql` before the column landed):
+   ```sql
+   alter table checkins add column if not exists voice_biomarkers jsonb;
+   ```
+   Fresh installs from current `lib/db/schema.sql` already include the column.
+2. **Env** (local `.env` + Vercel):
+   - `AMPLIFIER_API_KEY` — V2 API key (`mak_…` from Console → API Keys). V1 secret keys do not auth `/v2/*`.
+   - `AMPLIFIER_ACCOUNT_ID` — account id (`acct_…`) for `X-Account-ID`.
+3. **Streaming dropped for v1** — no mid-call WebSocket / during-call factor UI. Post-call
+   analyze + job poll only. See `docs/amplifier-streaming-spike.md`.
+4. **Fail-open locked** — missing audio, credentials, or Amplifier errors →
+   `voice_biomarkers` status `unavailable` / `error` and **keep the prior decision**. Never
+   escalate or reassure solely because biomarkers failed.
+
 ### The single biggest risk (unchanged)
 
-`.env` still lacks live Anthropic / ElevenLabs / Twilio / Supabase credentials, and Vercel
-has no environment variables. Nothing has ever run against a live service. The live site is
-still fixture-mode. `/console` shows every missing key by name. See `docs/demo-runbook.md`.
+`.env` still lacks live Anthropic / ElevenLabs / Twilio / Supabase credentials (and now also
+Amplifier keys for the post-call path), and Vercel may be missing mirrors. The live site is
+still largely fixture-mode. `/console` / demo-status show missing keys by name. See
+`docs/demo-runbook.md`.
 
 Without `ANTHROPIC_API_KEY`, extraction fails safe → every typed check-in comes out amber,
 including the green scenario. That is correct behaviour, not a bug.
 
 Cross-isolate `demo_state` durability for `/family` and `/call` is **wired**
 (`await loadActiveScenario()`) but **unproven** until Supabase keys exist.
+Post-call Amplifier analysis is **wired** but needs live `AMPLIFIER_*` + ElevenLabs +
+Supabase to prove end-to-end on stage.
 
 ---
 
@@ -78,8 +102,9 @@ WCAG AA; 44px touch targets; family surface minimum 19px and never any rule ids 
 **The branch moves under you.** Prefer `.worktrees/` (now gitignored) or a separate clone.
 **Verify `git branch --show-current` immediately before every commit.**
 
-**Thymia is deliberately parked.** Do not run `git stash pop`, and do not add
-`therapyAdherent` or `adherenceDays` fields.
+**Thymia remains deliberately parked.** Do not run `git stash pop`, and do not add
+`therapyAdherent` or `adherenceDays` fields. Amplifier (`respiratory` + `cognitive` post-call)
+is the voice-biomarker path that shipped instead — not a Thymia revival.
 
 **`tailwind-merge` silently deletes semantic font-size classes.** Register new semantic size
 tokens in `lib/utils.ts`. Look at screenshots, not just the harness.
@@ -118,12 +143,20 @@ Per-task reviews were clean (S1 needed one logging fix loop). Full suite: **464 
 
 ### P0 — user action, blocks everything
 
-Get `ANTHROPIC_API_KEY` and the three Supabase values into `.env`, run `lib/db/schema.sql` in
-the Supabase SQL editor (idempotent, self-seeds Margaret, includes `pain_score` and
-`demo_state`), then mirror the keys to Vercel with `vercel env add <NAME> production` and
-redeploy. Rehearse all three scenarios end to end and **record the backup video tonight.**
+Get `ANTHROPIC_API_KEY`, the three Supabase values, and (for voice biomarkers)
+`AMPLIFIER_API_KEY` + `AMPLIFIER_ACCOUNT_ID` into `.env`. Run `lib/db/schema.sql` in the
+Supabase SQL editor (idempotent, self-seeds Margaret). If the project already had schema
+applied before Amplifier landed, also run:
 
-Merge / push `fix/p1-correctness` before or with that redeploy so production gets the P1 fixes.
+```sql
+alter table checkins add column if not exists voice_biomarkers jsonb;
+```
+
+Mirror keys to Vercel with `vercel env add <NAME> production` and redeploy. Rehearse all
+three scenarios end to end and **record the backup video tonight.**
+
+Merge / push `feat/amplifier-voice-biomarkers` (includes P1 + Amplifier) before or with that
+redeploy so production gets the latest code.
 
 ### P1 — done on this branch
 
@@ -142,7 +175,9 @@ Presenter note: for the PE family deep link use **`/family?state=urgent`**. Neve
 
 ### Explicitly not doing
 
-Thymia biomarkers and RTM adherence — parked. Clinician-patient messaging portal deprioritised.
+- **Thymia** biomarkers and RTM adherence — still parked (Amplifier is the shipped path).
+- Mid-call Amplifier **streaming** — dropped for v1.
+- Clinician-patient messaging portal — deprioritised.
 
 ---
 
