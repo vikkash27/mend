@@ -95,6 +95,7 @@ export type CheckinRow = {
   decision: unknown;
   trend_findings: unknown;
   sbar: string | null;
+  voice_biomarkers?: unknown | null;
 };
 
 export type CheckinInsert = {
@@ -108,6 +109,7 @@ export type CheckinInsert = {
   decision?: unknown;
   trend_findings?: unknown;
   sbar?: string | null;
+  voice_biomarkers?: unknown | null;
 };
 
 export type EscalationRow = {

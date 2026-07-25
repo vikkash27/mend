@@ -14,6 +14,7 @@ import type {
   VitalsReading,
   VitalsSource,
 } from "../clinical/types";
+import type { VoiceBiomarkersRecord } from "../amplifier/types";
 
 /**
  * Shared, hot-path-safe Supabase reads/writes for the /api/triage and
@@ -325,6 +326,30 @@ export async function linkEscalationCheckin(
 ): Promise<boolean> {
   const result = await withTimeout(
     supabase.from("escalations").update({ checkin_id: checkinId }).eq("id", escalationId),
+    WRITE_TIMEOUT_MS,
+  );
+
+  if (!result || result.error) {
+    return false;
+  }
+  return true;
+}
+
+/** Patches voice biomarker analysis (and optional re-evaluated clinical
+ * fields) onto an existing check-in. Returns false on timeout, throw, or
+ * Supabase error — never throws. */
+export async function updateCheckinAfterBiomarkers(
+  supabase: SupabaseClient<Database>,
+  checkinId: string,
+  patch: {
+    voice_biomarkers: VoiceBiomarkersRecord;
+    decision?: unknown;
+    sbar?: string | null;
+    trend_findings?: unknown;
+  },
+): Promise<boolean> {
+  const result = await withTimeout(
+    supabase.from("checkins").update(patch).eq("id", checkinId),
     WRITE_TIMEOUT_MS,
   );
 

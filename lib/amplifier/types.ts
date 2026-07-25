@@ -30,3 +30,14 @@ export interface VoiceBiomarkers {
   recommendedAction?: string;
   source: "amplifier";
 }
+
+/** Persisted check-in snapshot for Amplifier voice biomarker analysis. */
+export type VoiceBiomarkersRecord = {
+  status: "pending" | "ready" | "unavailable" | "error";
+  conversationId?: string;
+  jobIds?: string[];
+  analyzedAt?: string;
+  error?: string;
+  raw?: unknown;
+  mapped?: VoiceBiomarkers;
+};

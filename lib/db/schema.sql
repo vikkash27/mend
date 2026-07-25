@@ -123,10 +123,17 @@ create table if not exists checkins (
   vitals jsonb,
   decision jsonb,
   trend_findings jsonb not null default '[]'::jsonb,
-  sbar text
+  sbar text,
+  -- Amplifier voice biomarker analysis snapshot (pending → ready/unavailable/error).
+  voice_biomarkers jsonb
 );
 
 alter table checkins disable row level security;
+
+-- Additive, idempotent: older deployments that created `checkins` before
+-- voice_biomarkers existed pick the column up on re-run.
+alter table checkins
+  add column if not exists voice_biomarkers jsonb;
 
 create index if not exists checkins_patient_id_created_at_idx
   on checkins (patient_id, created_at desc);

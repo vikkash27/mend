@@ -117,6 +117,7 @@ describe("schema.sql", () => {
         "decision",
         "trend_findings",
         "sbar",
+        "voice_biomarkers",
       ],
       escalations: ["id", "patient_id", "checkin_id", "level", "condition", "notified_caregiver_at"],
     };
