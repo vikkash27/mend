@@ -1,3 +1,5 @@
+export type { VoiceBiomarkers, VoiceDomainSignal } from "@/lib/amplifier/types";
+
 export type Severity = "green" | "amber" | "red";
 
 export type EcgDetermination =
