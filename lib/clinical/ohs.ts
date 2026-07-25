@@ -15,8 +15,19 @@
  *
  * The structure, scoring and bands are correct and are what the licensed text
  * plugs into: twelve items, each 0–4, summed to 0–48, higher being better.
- * Note this is the modern 0–48 scoring, not the original 1–5 per item
- * (12–60, lower better) — mixing the two is a common and silent error.
+ *
+ * SOURCES — see docs/adjudicated/oxford-hip-score.md.
+ *   Instrument   Dawson 1996, J Bone Joint Surg Br 78(2):185–90  (PMID 8666621)
+ *                Original scoring was 1–5 per item, 12–60, LOWER better.
+ *   0–48 form    Murray 2007, J Bone Joint Surg Br 89(8):1010–4  (PMID 17785736)
+ *                Written to settle exactly this confusion. It is what is used here.
+ *   Meaningful   Beard 2015, J Clin Epidemiol 68(1):73–9        (PMID 25441700)
+ *   change       NHS PROMs, 82,415 hip patients: MIC ~11 points at group level,
+ *                8 points for an individual by ROC.
+ *
+ * Both scoring forms remain in circulation and produce plausible two-digit
+ * numbers in overlapping ranges, so mixing them inverts the result silently.
+ * ohs.test.ts asserts the direction for that reason.
  */
 
 export interface OhsItem {

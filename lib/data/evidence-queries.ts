@@ -91,6 +91,13 @@ export const EVIDENCE_QUERIES: EvidenceQuery[] = [
     term: `(("total hip arthroplasty"[tiab] OR hemiarthroplasty[tiab]) AND (complications[tiab] OR readmission[tiab]) AND (timing[tiab] OR "30-day"[tiab] OR NSQIP[tiab])) ${HUMAN}`,
   },
   {
+    ruleId: "ohs-instrument",
+    location: "lib/clinical/ohs.ts — item set, 0-48 scoring, bands, MIC",
+    claimToVerify:
+      "That the 0-48 higher-is-better scoring is the current form rather than the original 1-5/12-60 lower-is-better one, what the published band cut-points are, and what change counts as meaningful for an individual patient.",
+    term: `("Oxford hip score"[tiab] OR "Oxford hip"[ti]) AND (validation[tiab] OR scoring[tiab] OR "minimal important"[tiab] OR responsiveness[tiab] OR interpretation[tiab]) ${HUMAN}`,
+  },
+  {
     ruleId: "remote-monitoring-transfer",
     location: "docs/CLINICAL_SOURCES.md — the threshold-transfer problem",
     claimToVerify:

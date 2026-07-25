@@ -216,8 +216,8 @@ Retrieved 2026-07-25 · 12 hits per threshold.
 | ☐ | [39038867](https://pubmed.ncbi.nlm.nih.gov/39038867/) | 2024 | BMJ Open | Association between diabetes mellitus and total hip arthroplasty outcomes: an observational study using the US National Inpatient Sample. |
 | ☐ | [27837400](https://pubmed.ncbi.nlm.nih.gov/27837400/) | 2017 | Clin Orthop Relat Res | Are Readmissions After THA Preventable? |
 | ☐ | [35447277](https://pubmed.ncbi.nlm.nih.gov/35447277/) | 2022 | J Arthroplasty | Outcomes Following Total Hip Arthroplasty in Patients With Postpolio Syndrome: A Matched Cohort Analysis. |
-| ☐ | [14974039](https://pubmed.ncbi.nlm.nih.gov/14974039/) | 2004 | Cochrane Database Syst Rev | Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis. |
 | ☐ | [16856020](https://pubmed.ncbi.nlm.nih.gov/16856020/) | 2006 | Cochrane Database Syst Rev | Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis. |
+| ☐ | [14974039](https://pubmed.ncbi.nlm.nih.gov/14974039/) | 2004 | Cochrane Database Syst Rev | Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis. |
 | ☐ | [35356923](https://pubmed.ncbi.nlm.nih.gov/35356923/) | 2022 | Medicine (Baltimore) | Pseudotumor and delayed recurrent dislocation after total hip arthroplasty with a modular femoral neck: A case report. |
 | ☐ | [18001186](https://pubmed.ncbi.nlm.nih.gov/18001186/) | 2007 | J Womens Health (Larchmt) | Safety of pregnancy and delivery after total hip arthroplasty. |
 
@@ -287,6 +287,37 @@ Retrieved 2026-07-25 · 12 hits per threshold.
 
 ```
 (("total hip arthroplasty"[tiab] OR hemiarthroplasty[tiab]) AND (complications[tiab] OR readmission[tiab]) AND (timing[tiab] OR "30-day"[tiab] OR NSQIP[tiab])) AND humans[MeSH Terms] AND english[Language]
+```
+
+</details>
+
+## ohs-instrument
+
+**Where:** `lib/clinical/ohs.ts — item set, 0-48 scoring, bands, MIC`
+
+**Claim a human must verify:** That the 0-48 higher-is-better scoring is the current form rather than the original 1-5/12-60 lower-is-better one, what the published band cut-points are, and what change counts as meaningful for an individual patient.
+
+103 papers match this query; top 12 by relevance:
+
+| | PMID | Year | Journal | Title |
+|---|---|---|---|---|
+| ☐ | [34704929](https://pubmed.ncbi.nlm.nih.gov/34704929/) | 2021 | Dan Med J | Gluteal-related lateral hip pain. |
+| ☐ | [35081452](https://pubmed.ncbi.nlm.nih.gov/35081452/) | 2022 | Osteoarthritis Cartilage | Crosswalks between the Oxford hip and knee scores and the HOOS-12 and KOOS-12 instruments. |
+| ☐ | [38458544](https://pubmed.ncbi.nlm.nih.gov/38458544/) | 2024 | J Clin Epidemiol | Minimal important change thresholds change over time after knee and hip arthroplasty. |
+| ☐ | [29307032](https://pubmed.ncbi.nlm.nih.gov/29307032/) | 2018 | Int Orthop | Cross-cultural adaptation and validation of a patient-reported hip outcome score. |
+| ☐ | [21163481](https://pubmed.ncbi.nlm.nih.gov/21163481/) | 2011 | Injury | Measuring hip outcomes: common scales and checklists. |
+| ☐ | [27168175](https://pubmed.ncbi.nlm.nih.gov/27168175/) | 2016 | Acta Orthop | Patient-reported outcome measures in arthroplasty registries. |
+| ☐ | [34920113](https://pubmed.ncbi.nlm.nih.gov/34920113/) | 2022 | J Clin Epidemiol | Minimal important changes and differences were estimated for Oxford hip and knee scores following primary and revision arthroplasty. |
+| ☐ | [34543314](https://pubmed.ncbi.nlm.nih.gov/34543314/) | 2021 | PLoS One | Systematic review and standardised assessment of Chinese cross-cultural adapted hip Patient Reported Outcome Measures (PROMs). |
+| ☐ | [36947604](https://pubmed.ncbi.nlm.nih.gov/36947604/) | 2023 | J Bone Joint Surg Am | Interpretation Threshold Values for the Oxford Hip Score in Patients Undergoing Total Hip Arthroplasty: Advancing Their Clinical Use. |
+| ☐ | [41721125](https://pubmed.ncbi.nlm.nih.gov/41721125/) | 2026 | J Patient Rep Outcomes | Revisiting minimally important changes for the Oxford Hip and Knee scores. |
+| ☐ | [25441700](https://pubmed.ncbi.nlm.nih.gov/25441700/) | 2015 | J Clin Epidemiol | Meaningful changes for the Oxford hip and knee scores after joint replacement surgery. |
+| ☐ | [29172934](https://pubmed.ncbi.nlm.nih.gov/29172934/) | 2018 | Acta Orthop | Early osteoarthritis after slipped capital femoral epiphysis. |
+
+<details><summary>PubMed query used</summary>
+
+```
+("Oxford hip score"[tiab] OR "Oxford hip"[ti]) AND (validation[tiab] OR scoring[tiab] OR "minimal important"[tiab] OR responsiveness[tiab] OR interpretation[tiab]) AND humans[MeSH Terms] AND english[Language]
 ```
 
 </details>
