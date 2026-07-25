@@ -289,15 +289,21 @@ export async function insertEscalation(
 }
 
 /** Patches checkin_id onto an early caregiver-SMS audit row once the
- * check-in write has succeeded. Failures are soft for callers — never
- * use a link-back miss to suppress a successful SMS. */
+ * check-in write has succeeded. Returns false on timeout, throw, or
+ * Supabase error so callers can log — never throw, and never use a
+ * link-back miss to suppress a successful SMS. */
 export async function linkEscalationCheckin(
   supabase: SupabaseClient<Database>,
   escalationId: string,
   checkinId: string,
-): Promise<void> {
-  await withTimeout(
+): Promise<boolean> {
+  const result = await withTimeout(
     supabase.from("escalations").update({ checkin_id: checkinId }).eq("id", escalationId),
     WRITE_TIMEOUT_MS,
   );
+
+  if (!result || result.error) {
+    return false;
+  }
+  return true;
 }

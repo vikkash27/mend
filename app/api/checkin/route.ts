@@ -153,13 +153,20 @@ async function recordCaregiverNotified(args: {
   }
 
   try {
-    return await insertEscalation(supabase, {
+    const id = await insertEscalation(supabase, {
       patient_id: args.patientId,
       checkin_id: null,
       level: args.level,
       condition: args.condition,
       notified_caregiver_at: args.notifiedAt,
     });
+    if (!id) {
+      console.warn(
+        "[api/checkin] failed to durable-record caregiver notification:",
+        "insert returned no id",
+      );
+    }
+    return id;
   } catch (err) {
     console.warn("[api/checkin] failed to durable-record caregiver notification:", err);
     return undefined;
@@ -231,7 +238,14 @@ async function persist(args: {
 
   if (plan.kind === "link") {
     try {
-      await linkEscalationCheckin(supabase, plan.escalationId, plan.checkinId);
+      const linked = await linkEscalationCheckin(supabase, plan.escalationId, plan.checkinId);
+      if (!linked) {
+        // Never suppress a successful SMS because link-back failed.
+        console.warn(
+          "[api/checkin] failed to link escalation to checkin:",
+          { escalationId: plan.escalationId, checkinId: plan.checkinId },
+        );
+      }
     } catch (err) {
       // Never suppress a successful SMS because link-back failed.
       console.warn("[api/checkin] failed to link escalation to checkin:", err);

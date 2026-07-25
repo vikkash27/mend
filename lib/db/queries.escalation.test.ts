@@ -53,14 +53,33 @@ describe("insertEscalation", () => {
 });
 
 describe("linkEscalationCheckin", () => {
-  it("patches checkin_id on the early escalation row", async () => {
+  it("patches checkin_id on the early escalation row and returns true", async () => {
     const { client, from, update, eq } = mockClientForUpdateEq();
 
-    await linkEscalationCheckin(client, "esc-42", "checkin-7");
+    const ok = await linkEscalationCheckin(client, "esc-42", "checkin-7");
 
     expect(from).toHaveBeenCalledWith("escalations");
     expect(update).toHaveBeenCalledWith({ checkin_id: "checkin-7" });
     expect(eq).toHaveBeenCalledWith("id", "esc-42");
+    expect(ok).toBe(true);
+  });
+
+  it("returns false when the update reports a Supabase error", async () => {
+    const eq = vi.fn().mockResolvedValue({ data: null, error: { message: "update failed" } });
+    const update = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ update }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    await expect(linkEscalationCheckin(client, "esc-42", "checkin-7")).resolves.toBe(false);
+  });
+
+  it("returns false when the update times out or throws (withTimeout soft-fail)", async () => {
+    const eq = vi.fn().mockRejectedValue(new Error("network down"));
+    const update = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ update }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    await expect(linkEscalationCheckin(client, "esc-42", "checkin-7")).resolves.toBe(false);
   });
 });
 
