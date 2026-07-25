@@ -169,7 +169,9 @@ export default async function FamilyPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16">
-      <p className="eyebrow">Mend &middot; Recovery updates</p>
+      <p className="font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+        Mend &middot; Recovery updates
+      </p>
 
       <div className="pt-10">
         <SeverityChip level={state.decision.level} size="lg" />

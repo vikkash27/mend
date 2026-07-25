@@ -50,7 +50,7 @@ export function CheckinStrip({ days }: { days: readonly CheckinDay[] }) {
             <span
               aria-hidden="true"
               className={cn(
-                "text-label",
+                "text-family-label",
                 day.isToday ? "font-medium text-ink-secondary" : "text-ink-tertiary",
               )}
             >

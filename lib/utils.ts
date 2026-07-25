@@ -17,6 +17,8 @@ const FONT_SIZES = [
   "label",
   "meta",
   "eyebrow",
+  "family-eyebrow",
+  "family-label",
   "vital",
 ] as const
 

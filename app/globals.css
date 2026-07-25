@@ -84,6 +84,12 @@
   --text-eyebrow: 0.8125rem;
   --text-eyebrow--line-height: 1.2;
   --text-eyebrow--letter-spacing: 0.16em;
+  /* Family surface only — binding 19px minimum; do not use on clinician/console. */
+  --text-family-eyebrow: 1.1875rem;
+  --text-family-eyebrow--line-height: 1.35;
+  --text-family-eyebrow--letter-spacing: 0.12em;
+  --text-family-label: 1.1875rem;
+  --text-family-label--line-height: 1.45;
   --text-vital: 2.75rem;
   --text-vital--line-height: 1;
   --text-vital--letter-spacing: -0.02em;
