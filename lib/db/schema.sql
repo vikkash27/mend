@@ -149,6 +149,119 @@ alter table escalations disable row level security;
 create index if not exists escalations_patient_id_idx on escalations (patient_id);
 
 -- ---------------------------------------------------------------------------
+-- medications / medication_administrations / prn_requests
+--
+-- A PRN request ends in a prescribing decision, so the audit row records who
+-- decided, when, and against which assessment. `assessment` is the frozen
+-- output of assessPrnRequest() at request time — a later change to the rules
+-- must never rewrite what a clinician was actually shown when they approved.
+-- RLS off: synthetic single-tenant demo only, same as every table above.
+-- ---------------------------------------------------------------------------
+create table if not exists medications (
+  id                  text primary key,
+  patient_id          uuid not null references patients (id) on delete cascade,
+  name                text not null,
+  dose                text not null,
+  route               text not null,
+  schedule            text not null check (schedule in ('regular', 'prn')),
+  frequency           text not null,
+  indication          text not null,
+  min_interval_hours  numeric,
+  max_doses_in_24h    int,
+  is_opioid           boolean not null default false,
+  contraindication_note text
+);
+
+alter table medications disable row level security;
+create index if not exists medications_patient_id_idx on medications (patient_id);
+
+create table if not exists medication_administrations (
+  id            uuid primary key default gen_random_uuid(),
+  patient_id    uuid not null references patients (id) on delete cascade,
+  medication_id text not null references medications (id) on delete cascade,
+  taken_at      timestamptz not null,
+  source        text not null check (source in ('patient_reported', 'clinician_recorded')),
+  created_at    timestamptz not null default now()
+);
+
+alter table medication_administrations disable row level security;
+create index if not exists medication_administrations_patient_taken_idx
+  on medication_administrations (patient_id, taken_at desc);
+
+create table if not exists prn_requests (
+  id             uuid primary key default gen_random_uuid(),
+  patient_id     uuid not null references patients (id) on delete cascade,
+  medication_id  text not null references medications (id) on delete cascade,
+  checkin_id     uuid references checkins (id) on delete set null,
+  requested_at   timestamptz not null default now(),
+  pain_score     int,
+  -- frozen assessPrnRequest() output, including outcome and reasons
+  assessment     jsonb not null,
+  notified_clinician_at timestamptz,
+  -- the prescribing decision, and who made it
+  decision       text check (decision in ('approved', 'declined', 'call_placed')),
+  decided_by     text,
+  decided_at     timestamptz,
+  decision_note  text
+);
+
+alter table prn_requests disable row level security;
+create index if not exists prn_requests_patient_requested_idx
+  on prn_requests (patient_id, requested_at desc);
+
+-- Margaret's regimen, matching lib/clinical/medications.ts DEMO_MEDICATIONS.
+insert into medications (id, patient_id, name, dose, route, schedule, frequency, indication,
+                         min_interval_hours, max_doses_in_24h, is_opioid, contraindication_note)
+select v.id, p.id, v.name, v.dose, v.route, v.schedule, v.frequency, v.indication,
+       v.min_interval_hours, v.max_doses_in_24h, v.is_opioid, v.contraindication_note
+from patients p
+cross join (values
+  ('acetaminophen-1g', 'Acetaminophen', '1 g', 'oral', 'regular',
+   'Four times a day, at least 4 hours apart', 'Background pain relief', null, null, false, null),
+  ('oxycodone-5mg', 'Oxycodone (immediate release)', '5 mg', 'oral', 'prn',
+   'Every 4 hours as needed', 'Breakthrough pain', 4, 6, true, null),
+  ('senna-15mg', 'Senna', '15 mg', 'oral', 'regular',
+   'At night', 'Prevents constipation from the oxycodone', null, null, false, null),
+  ('enoxaparin-40mg', 'Enoxaparin', '40 mg', 'subcutaneous', 'regular',
+   'Once daily', 'Clot prevention after hip surgery', null, null, false, null),
+  ('ibuprofen-400mg', 'Ibuprofen', '400 mg', 'oral', 'prn',
+   'Not currently prescribed', 'Breakthrough pain', 6, 3, false,
+   'Withheld: on enoxaparin, and an NSAID raises bleeding risk. Do not offer without the surgical team''s agreement.')
+) as v (id, name, dose, route, schedule, frequency, indication,
+        min_interval_hours, max_doses_in_24h, is_opioid, contraindication_note)
+where p.name like 'Margaret%'
+on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- ohs_responses — Oxford Hip Score submissions.
+--
+-- Answers are stored per item rather than as a total, so a score can be
+-- re-derived if the scoring is corrected, and so a partially completed
+-- questionnaire survives as what it is. `total` is null until all twelve items
+-- are answered — a part-scored PROM has no defined total and pro-rating one
+-- produces a number that looks comparable to a real score and is not.
+-- RLS off: synthetic single-tenant demo only.
+-- ---------------------------------------------------------------------------
+create table if not exists ohs_responses (
+  id            uuid primary key default gen_random_uuid(),
+  patient_id    uuid not null references patients (id) on delete cascade,
+  submitted_at  timestamptz not null default now(),
+  day_post_op   int,
+  -- { itemId: optionIndex 0..4 }
+  answers       jsonb not null,
+  total         int check (total between 0 and 48),
+  band          text,
+  complete      boolean not null default false,
+  -- true while the instrument carries placeholder wording rather than the
+  -- licensed text; totals recorded under it are within-patient trend only
+  placeholder_wording boolean not null default true
+);
+
+alter table ohs_responses disable row level security;
+create index if not exists ohs_responses_patient_submitted_idx
+  on ohs_responses (patient_id, submitted_at desc);
+
+-- ---------------------------------------------------------------------------
 -- demo_state — key/value store for console-selected demo scenario so the
 -- choice survives across Vercel serverless isolates (see lib/sim/active-scenario.ts
 -- and lib/sim/demo-state.sql). RLS off: synthetic single-tenant demo only.

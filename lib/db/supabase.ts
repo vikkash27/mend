@@ -128,6 +128,96 @@ export type EscalationInsert = {
   notified_caregiver_at?: string | null;
 };
 
+export type MedicationRow = {
+  id: string;
+  patient_id: string;
+  name: string;
+  dose: string;
+  route: string;
+  schedule: string;
+  frequency: string;
+  indication: string;
+  min_interval_hours: number | null;
+  max_doses_in_24h: number | null;
+  is_opioid: boolean;
+  contraindication_note: string | null;
+};
+
+export type MedicationInsert = Omit<MedicationRow, "is_opioid"> & { is_opioid?: boolean };
+
+export type MedicationAdministrationRow = {
+  id: string;
+  patient_id: string;
+  medication_id: string;
+  taken_at: string;
+  source: string;
+  created_at: string;
+};
+
+export type MedicationAdministrationInsert = {
+  id?: string;
+  patient_id: string;
+  medication_id: string;
+  taken_at: string;
+  source: string;
+  created_at?: string;
+};
+
+export type PrnRequestRow = {
+  id: string;
+  patient_id: string;
+  medication_id: string;
+  checkin_id: string | null;
+  requested_at: string;
+  pain_score: number | null;
+  /** Frozen assessPrnRequest() output — never rewritten after the fact. */
+  assessment: unknown;
+  notified_clinician_at: string | null;
+  decision: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+};
+
+export type PrnRequestInsertRow = {
+  id?: string;
+  patient_id: string;
+  medication_id: string;
+  checkin_id?: string | null;
+  requested_at?: string;
+  pain_score?: number | null;
+  assessment: unknown;
+  notified_clinician_at?: string | null;
+  decision?: string | null;
+  decided_by?: string | null;
+  decided_at?: string | null;
+  decision_note?: string | null;
+};
+
+export type OhsResponseRow = {
+  id: string;
+  patient_id: string;
+  submitted_at: string;
+  day_post_op: number | null;
+  answers: unknown;
+  total: number | null;
+  band: string | null;
+  complete: boolean;
+  placeholder_wording: boolean;
+};
+
+export type OhsResponseInsert = {
+  id?: string;
+  patient_id: string;
+  submitted_at?: string;
+  day_post_op?: number | null;
+  answers: unknown;
+  total?: number | null;
+  band?: string | null;
+  complete?: boolean;
+  placeholder_wording?: boolean;
+};
+
 type TableDef<Row, Insert> = {
   Row: Row;
   Insert: Insert;
@@ -147,6 +237,13 @@ export type Database = {
       ecg_readings: TableDef<EcgReadingRow, EcgReadingInsert>;
       checkins: TableDef<CheckinRow, CheckinInsert>;
       escalations: TableDef<EscalationRow, EscalationInsert>;
+      medications: TableDef<MedicationRow, MedicationInsert>;
+      medication_administrations: TableDef<
+        MedicationAdministrationRow,
+        MedicationAdministrationInsert
+      >;
+      prn_requests: TableDef<PrnRequestRow, PrnRequestInsertRow>;
+      ohs_responses: TableDef<OhsResponseRow, OhsResponseInsert>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

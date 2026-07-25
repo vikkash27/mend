@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-07-25T16:54:36.109Z",
+  "retrievedAt": "2026-07-25T18:32:58.837Z",
   "hitsPerRule": 12,
   "rules": [
     {
@@ -785,15 +785,6 @@
           "url": "https://pubmed.ncbi.nlm.nih.gov/35447277/"
         },
         {
-          "pmid": "14974039",
-          "title": "Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis.",
-          "journal": "Cochrane Database Syst Rev",
-          "year": "2004",
-          "authors": "Jolles BM, Bogoch ER",
-          "doi": "10.1002/14651858.CD003828.pub2",
-          "url": "https://pubmed.ncbi.nlm.nih.gov/14974039/"
-        },
-        {
           "pmid": "16856020",
           "title": "Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis.",
           "journal": "Cochrane Database Syst Rev",
@@ -801,6 +792,15 @@
           "authors": "Jolles BM, Bogoch ER",
           "doi": "10.1002/14651858.CD003828.pub3",
           "url": "https://pubmed.ncbi.nlm.nih.gov/16856020/"
+        },
+        {
+          "pmid": "14974039",
+          "title": "Posterior versus lateral surgical approach for total hip arthroplasty in adults with osteoarthritis.",
+          "journal": "Cochrane Database Syst Rev",
+          "year": "2004",
+          "authors": "Jolles BM, Bogoch ER",
+          "doi": "10.1002/14651858.CD003828.pub2",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/14974039/"
         },
         {
           "pmid": "35356923",
@@ -1055,6 +1055,123 @@
           "authors": "Nelson SJ, Webb ML, Lukasiewicz AM, et al.",
           "doi": "10.1016/j.arth.2016.11.053",
           "url": "https://pubmed.ncbi.nlm.nih.gov/28065622/"
+        }
+      ]
+    },
+    {
+      "ruleId": "ohs-instrument",
+      "location": "lib/clinical/ohs.ts — item set, 0-48 scoring, bands, MIC",
+      "claimToVerify": "That the 0-48 higher-is-better scoring is the current form rather than the original 1-5/12-60 lower-is-better one, what the published band cut-points are, and what change counts as meaningful for an individual patient.",
+      "term": "(\"Oxford hip score\"[tiab] OR \"Oxford hip\"[ti]) AND (validation[tiab] OR scoring[tiab] OR \"minimal important\"[tiab] OR responsiveness[tiab] OR interpretation[tiab]) AND humans[MeSH Terms] AND english[Language]",
+      "totalMatches": 103,
+      "retrieved": 12,
+      "papers": [
+        {
+          "pmid": "34704929",
+          "title": "Gluteal-related lateral hip pain.",
+          "journal": "Dan Med J",
+          "year": "2021",
+          "authors": "Bohn MB, Lund B, Spoorendonk K, et al.",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34704929/"
+        },
+        {
+          "pmid": "35081452",
+          "title": "Crosswalks between the Oxford hip and knee scores and the HOOS-12 and KOOS-12 instruments.",
+          "journal": "Osteoarthritis Cartilage",
+          "year": "2022",
+          "authors": "Soh SE, Harris IA, Cashman K, et al.",
+          "doi": "10.1016/j.joca.2022.01.004",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/35081452/"
+        },
+        {
+          "pmid": "38458544",
+          "title": "Minimal important change thresholds change over time after knee and hip arthroplasty.",
+          "journal": "J Clin Epidemiol",
+          "year": "2024",
+          "authors": "Harris LK, Troelsen A, Terluin B, et al.",
+          "doi": "10.1016/j.jclinepi.2024.111316",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38458544/"
+        },
+        {
+          "pmid": "29307032",
+          "title": "Cross-cultural adaptation and validation of a patient-reported hip outcome score.",
+          "journal": "Int Orthop",
+          "year": "2018",
+          "authors": "Haragus H, Prejbeanu R, Poenaru DV, et al.",
+          "doi": "10.1007/s00264-017-3742-5",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29307032/"
+        },
+        {
+          "pmid": "21163481",
+          "title": "Measuring hip outcomes: common scales and checklists.",
+          "journal": "Injury",
+          "year": "2011",
+          "authors": "Ahmad MA, Xypnitos FN, Giannoudis PV",
+          "doi": "10.1016/j.injury.2010.11.052",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/21163481/"
+        },
+        {
+          "pmid": "27168175",
+          "title": "Patient-reported outcome measures in arthroplasty registries.",
+          "journal": "Acta Orthop",
+          "year": "2016",
+          "authors": "Rolfson O, Eresian Chenok K, Bohm E, et al.",
+          "doi": "10.1080/17453674.2016.1181815",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/27168175/"
+        },
+        {
+          "pmid": "34920113",
+          "title": "Minimal important changes and differences were estimated for Oxford hip and knee scores following primary and revision arthroplasty.",
+          "journal": "J Clin Epidemiol",
+          "year": "2022",
+          "authors": "Sabah SA, Alvand A, Beard DJ, et al.",
+          "doi": "10.1016/j.jclinepi.2021.12.016",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34920113/"
+        },
+        {
+          "pmid": "34543314",
+          "title": "Systematic review and standardised assessment of Chinese cross-cultural adapted hip Patient Reported Outcome Measures (PROMs).",
+          "journal": "PLoS One",
+          "year": "2021",
+          "authors": "Ngwayi JRM, Tan J, Liang N, et al.",
+          "doi": "10.1371/journal.pone.0257081",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34543314/"
+        },
+        {
+          "pmid": "36947604",
+          "title": "Interpretation Threshold Values for the Oxford Hip Score in Patients Undergoing Total Hip Arthroplasty: Advancing Their Clinical Use.",
+          "journal": "J Bone Joint Surg Am",
+          "year": "2023",
+          "authors": "Harris LK, Troelsen A, Terluin B, et al.",
+          "doi": "10.2106/JBJS.22.01293",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/36947604/"
+        },
+        {
+          "pmid": "41721125",
+          "title": "Revisiting minimally important changes for the Oxford Hip and Knee scores.",
+          "journal": "J Patient Rep Outcomes",
+          "year": "2026",
+          "authors": "Smith AB, Lewis D, Mealing S, et al.",
+          "doi": "10.1186/s41687-026-01024-1",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41721125/"
+        },
+        {
+          "pmid": "25441700",
+          "title": "Meaningful changes for the Oxford hip and knee scores after joint replacement surgery.",
+          "journal": "J Clin Epidemiol",
+          "year": "2015",
+          "authors": "Beard DJ, Harris K, Dawson J, et al.",
+          "doi": "10.1016/j.jclinepi.2014.08.009",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/25441700/"
+        },
+        {
+          "pmid": "29172934",
+          "title": "Early osteoarthritis after slipped capital femoral epiphysis.",
+          "journal": "Acta Orthop",
+          "year": "2018",
+          "authors": "Helgesson L, Johansson PK, Aurell Y, et al.",
+          "doi": "10.1080/17453674.2017.1407055",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29172934/"
         }
       ]
     },
