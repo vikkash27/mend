@@ -98,6 +98,13 @@ projector-width images with an image-reading tool.
 **Don't run concurrent agents that commit to the same branch.** Scope each to disjoint
 directories, or run them sequentially. Read-only reviewers can run in parallel safely.
 
+**`public/vignettes.json` is a committed build artifact.** `npm test` regenerates it and
+`/clinician/engine` renders it verbatim. If you change any rule `rationale`, `condition` or
+`action` string, that file changes too — commit it and redeploy, or the vignette suite will
+contradict the live engine. This exact trap left the escalation frame saying 100 while the page
+built to prove clinical rigour still said 110. After touching `lib/clinical/**`, always check
+`git status` for it.
+
 ---
 
 ## 4. What was fixed today (don't re-litigate)
