@@ -1,0 +1,413 @@
+<title>Mend — the ASC business case</title>
+<style>
+  :root {
+    --bg: #F1F4F4;
+    --surface: #FFFFFF;
+    --surface-2: #E9EEEE;
+    --line: #D3DCDC;
+    --line-soft: #E2E9E9;
+    --ink: #131A1D;
+    --muted: #55646A;
+    --faint: #84949A;
+    --accent: #00666B;
+    --accent-soft: #DCEBEB;
+    --gain: #0E6E4B;
+    --gain-soft: #DDEFE6;
+    --cost: #A03A2C;
+    --cost-soft: #F5E1DD;
+    --warn: #8A6208;
+    --warn-soft: #F5EAD3;
+
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0E1315; --surface: #161D20; --surface-2: #1D2529;
+      --line: #2A3438; --line-soft: #222B2F;
+      --ink: #E8EEEE; --muted: #9AA9AE; --faint: #6D7C82;
+      --accent: #4FA8AC; --accent-soft: #123033;
+      --gain: #4FB388; --gain-soft: #10291F;
+      --cost: #D97465; --cost-soft: #2C1815;
+      --warn: #CFA240; --warn-soft: #2A2110;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F1F4F4; --surface: #FFFFFF; --surface-2: #E9EEEE;
+    --line: #D3DCDC; --line-soft: #E2E9E9;
+    --ink: #131A1D; --muted: #55646A; --faint: #84949A;
+    --accent: #00666B; --accent-soft: #DCEBEB;
+    --gain: #0E6E4B; --gain-soft: #DDEFE6;
+    --cost: #A03A2C; --cost-soft: #F5E1DD;
+    --warn: #8A6208; --warn-soft: #F5EAD3;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1315; --surface: #161D20; --surface-2: #1D2529;
+    --line: #2A3438; --line-soft: #222B2F;
+    --ink: #E8EEEE; --muted: #9AA9AE; --faint: #6D7C82;
+    --accent: #4FA8AC; --accent-soft: #123033;
+    --gain: #4FB388; --gain-soft: #10291F;
+    --cost: #D97465; --cost-soft: #2C1815;
+    --warn: #CFA240; --warn-soft: #2A2110;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .page {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 40px) 60px;
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  .col { max-width: 760px; margin: 0 auto; }
+  .wide { max-width: 940px; margin: 0 auto; }
+
+  /* masthead */
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 34px; display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+  .mast .lhs { flex: 1 1 300px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-family: var(--serif); font-size: clamp(30px, 5.5vw, 46px); line-height: 1.08; letter-spacing: -0.02em; margin: 10px 0 0; font-weight: 600; text-wrap: balance; }
+  .standfirst { font-size: 17px; color: var(--muted); margin-top: 12px; max-width: 60ch; text-wrap: pretty; }
+  .theme-btn { font-family: var(--sans); font-size: 12.5px; cursor: pointer; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  h2 { font-family: var(--serif); font-size: 25px; letter-spacing: -0.015em; margin: 46px 0 6px; font-weight: 600; text-wrap: balance; }
+  h2 .num { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: .1em; display: block; margin-bottom: 6px; }
+  h3 { font-size: 15.5px; margin: 26px 0 6px; font-weight: 650; letter-spacing: -0.005em; }
+  p { margin: 12px 0; max-width: 68ch; }
+  a { color: var(--accent); }
+  strong { font-weight: 650; }
+  em.term { font-style: normal; font-weight: 650; color: var(--accent); }
+
+  .lede { font-size: 18px; }
+  .rule { height: 1px; background: var(--line); border: 0; margin: 40px 0 0; }
+
+  /* pull statement */
+  .pull { border-left: 3px solid var(--accent); padding: 4px 0 4px 20px; margin: 26px 0; font-family: var(--serif); font-size: 21px; line-height: 1.4; color: var(--ink); max-width: 60ch; text-wrap: pretty; }
+
+  /* value cards */
+  .values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0 8px; }
+  @media (max-width: 760px) { .values { grid-template-columns: 1fr; } }
+  .val { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 17px; }
+  .val .rank { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
+  .val h4 { margin: 7px 0 6px; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+  .val p { font-size: 13.5px; color: var(--muted); margin: 0; }
+  .val.primary { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .val.primary .rank { color: var(--accent); }
+
+  /* worksheet */
+  .worksheet { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin: 22px 0; overflow: hidden; }
+  .ws-head { padding: 15px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .ws-head .t { font-family: var(--serif); font-size: 18px; font-weight: 600; }
+  .ws-head .h { font-size: 12.5px; color: var(--muted); }
+  .ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 780px) { .ws-grid { grid-template-columns: 1fr; } }
+  .ws-inputs { padding: 6px 20px 18px; border-right: 1px solid var(--line); }
+  @media (max-width: 780px) { .ws-inputs { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .grp { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin: 18px 0 4px; }
+  .fld { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+  .fld label { flex: 1; font-size: 13.5px; color: var(--muted); line-height: 1.35; }
+  .fld input { width: 96px; flex: none; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; text-align: right; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); color: var(--ink); }
+  .fld input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .fld .u { font-family: var(--mono); font-size: 11.5px; color: var(--faint); width: 22px; flex: none; }
+
+  .ws-out { padding: 6px 20px 20px; }
+  .orow { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+  .orow .ol { flex: 1; font-size: 13.5px; }
+  .orow .ol small { display: block; color: var(--faint); font-size: 11.5px; font-family: var(--mono); margin-top: 2px; }
+  .orow .ov { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  .orow.gain .ov { color: var(--gain); }
+  .orow.cost .ov { color: var(--cost); }
+  .net { margin-top: 16px; background: var(--gain-soft); border: 1px solid var(--gain); border-radius: 10px; padding: 15px 17px; }
+  .net.neg { background: var(--cost-soft); border-color: var(--cost); }
+  .net .nl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gain); font-weight: 650; }
+  .net.neg .nl { color: var(--cost); }
+  .net .nv { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 32px; font-weight: 650; letter-spacing: -0.02em; color: var(--gain); line-height: 1.1; margin-top: 3px; }
+  .net.neg .nv { color: var(--cost); }
+  .net .nsub { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .net .nsub b { font-family: var(--mono); font-weight: 650; color: var(--ink); }
+
+  .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 14px; background: var(--surface-2); }
+  .bar span { display: block; height: 100%; }
+  .barkey { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 9px; font-size: 11.5px; color: var(--muted); }
+  .barkey i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  /* excluded note */
+  .excl { background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; padding: 16px 18px; margin: 22px 0; }
+  .excl .h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--warn); font-weight: 650; margin-bottom: 7px; }
+  .excl p { margin: 0; font-size: 14px; }
+
+  /* sequence */
+  ol.seq { list-style: none; counter-reset: s; padding: 0; margin: 18px 0; display: flex; flex-direction: column; gap: 2px; }
+  ol.seq li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line-soft); align-items: start; }
+  ol.seq li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 650; padding-top: 3px; }
+  ol.seq li b { display: block; font-size: 15px; font-weight: 650; margin-bottom: 3px; }
+  ol.seq li span { font-size: 14px; color: var(--muted); }
+
+  /* comparison table */
+  .tw { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  th, td { text-align: left; padding: 11px 15px; font-size: 13.5px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); font-weight: 650; background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.who { font-weight: 600; }
+  td.gap { color: var(--muted); }
+
+  /* risk register */
+  .risk { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 18px 0; background: var(--surface); }
+  .risk .r { display: grid; grid-template-columns: 76px 1fr; gap: 0; border-bottom: 1px solid var(--line-soft); }
+  .risk .r:last-child { border-bottom: 0; }
+  .risk .sev { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; padding: 15px 0 15px 15px; }
+  .risk .sev.hi { color: var(--cost); }
+  .risk .sev.md { color: var(--warn); }
+  .risk .body { padding: 14px 16px 15px 12px; }
+  .risk .body b { display: block; font-size: 14.5px; font-weight: 650; margin-bottom: 4px; }
+  .risk .body span { font-size: 13.5px; color: var(--muted); }
+
+  ul.plain { padding-left: 20px; margin: 12px 0; }
+  ul.plain li { margin: 7px 0; font-size: 14.5px; max-width: 66ch; }
+
+  footer.f { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); max-width: 68ch; }
+</style>
+
+<div class="page">
+  <div class="wide">
+
+    <div class="mast">
+      <div class="lhs">
+        <div class="eyebrow">Business case · US ambulatory surgery centers</div>
+        <h1>The center sends her home in four hours. Then nobody is watching.</h1>
+        <div class="standfirst">Why Mend&rsquo;s buyer is the ambulatory surgery center, and what it is worth to one.</div>
+      </div>
+      <button class="theme-btn" id="theme">Theme</button>
+    </div>
+
+    <div class="col">
+
+      <p class="lede">Total joints moved to the ambulatory setting faster than the post-operative safety infrastructure did. A hospital that discharges a hip replacement on day three has a ward, a night nurse, an observation period and a crash team standing behind that decision. An ASC discharging the same operation at four hours has a phone number.</p>
+
+      <p>That asymmetry is the entire commercial argument. In the hospital, Mend duplicates a safety net that already exists — which is why it is a hard sell there and why the incumbent deterioration scores live in that market. In the ASC, Mend <em class="term">is</em> the safety net. There is nothing else between discharge and the two-week wound check.</p>
+
+      <hr class="rule" />
+
+      <h2><span class="num">The shift</span>Why the buyer exists now and didn&rsquo;t five years ago</h2>
+
+      <p>Medicare&rsquo;s removal of total knee and then total hip arthroplasty from the inpatient-only list, and their subsequent addition to the ASC covered-procedures list, converted a hospital operation into an ambulatory one and moved the volume accordingly. Commercial payers followed, generally faster.</p>
+
+      <p>The clinical community solved the intraoperative and anaesthetic problems of same-day joints convincingly. What it did not solve is the fourteen days after the patient leaves. Venous thromboembolism does not peak on the day of surgery. Prosthetic joint infection declares itself in weeks two to four. Neither is detectable at the twenty-four-hour follow-up call, which is the only structured contact most centers make.</p>
+
+      <div class="pull">Ambulatory surgery centers took on the operation and the discharge, but inherited none of the surveillance that used to sit around them.</div>
+
+      <h2><span class="num">The economics</span>Three value lines, in the order they actually close</h2>
+
+      <div class="values">
+        <div class="val primary">
+          <div class="rank">Dominant term</div>
+          <h4>Case capacity</h4>
+          <p>Centers decline otherwise-suitable patients over age, comorbidity, ASA class or living alone. A defensible monitored safety net lets the medical director widen selection criteria. Every recovered case carries full facility contribution margin.</p>
+        </div>
+        <div class="val">
+          <div class="rank">Reliable</div>
+          <h4>Nursing labour</h4>
+          <p>Post-operative follow-up contact is already staffed and already paid for. Mend covers the whole risk window instead of one call at twenty-four hours, and returns most of those nurse hours to the schedule.</p>
+        </div>
+        <div class="val">
+          <div class="rank">Real but modest</div>
+          <h4>Avoided rescues</h4>
+          <p>An unplanned hospital visit after an ambulatory joint is a quality-reported event, an uncompensated rescue, and a referral-pattern problem. Fewer of them is worth money — just less money than the capacity line.</p>
+        </div>
+      </div>
+
+      <p>Sequencing matters when you pitch this. Cost-savings arguments get routed to a committee. Capacity arguments get routed to the surgeon-owners, who are the people whose income rises when the schedule fills. Lead with capacity.</p>
+
+    </div>
+
+    <div class="wide">
+      <h2 style="max-width:760px;margin-left:auto;margin-right:auto"><span class="num">The model</span>What it is worth to one center</h2>
+      <p style="max-width:68ch;margin-left:auto;margin-right:auto">Every figure below is an input, not a claim. The defaults are illustrative placeholders — replace them with the center&rsquo;s own numbers before this means anything.</p>
+
+      <div class="worksheet">
+        <div class="ws-head">
+          <span class="t">Annual value, single center</span>
+          <span class="h">edit any field &middot; recalculates live</span>
+        </div>
+        <div class="ws-grid">
+          <div class="ws-inputs">
+            <div class="grp">Volume &amp; margin</div>
+            <div class="fld"><label for="i1">Ambulatory joint cases per year</label><input id="i1" type="number" min="0" step="10" value="400" /><span class="u"></span></div>
+            <div class="fld"><label for="i2">Facility contribution margin per case</label><input id="i2" type="number" min="0" step="100" value="2500" /><span class="u">$</span></div>
+
+            <div class="grp">Capacity recovered</div>
+            <div class="fld"><label for="i3">Patients declined per year over post-op safety or social concerns</label><input id="i3" type="number" min="0" step="5" value="60" /><span class="u"></span></div>
+            <div class="fld"><label for="i4">Share you would accept with monitoring in place</label><input id="i4" type="number" min="0" max="100" step="5" value="35" /><span class="u">%</span></div>
+
+            <div class="grp">Nursing labour</div>
+            <div class="fld"><label for="i5">Nurse hours per week on post-op follow-up calls</label><input id="i5" type="number" min="0" step="1" value="10" /><span class="u">h</span></div>
+            <div class="fld"><label for="i6">Loaded nurse cost per hour</label><input id="i6" type="number" min="0" step="5" value="55" /><span class="u">$</span></div>
+            <div class="fld"><label for="i7">Share of that contact Mend can absorb</label><input id="i7" type="number" min="0" max="100" step="5" value="70" /><span class="u">%</span></div>
+
+            <div class="grp">Avoided rescues</div>
+            <div class="fld"><label for="i8">30-day hospital visit rate after ambulatory joints</label><input id="i8" type="number" min="0" max="100" step="0.5" value="4" /><span class="u">%</span></div>
+            <div class="fld"><label for="i9">Relative reduction you would credit to monitoring</label><input id="i9" type="number" min="0" max="100" step="5" value="20" /><span class="u">%</span></div>
+            <div class="fld"><label for="i10">Cost to the center per unplanned hospital visit</label><input id="i10" type="number" min="0" step="100" value="1200" /><span class="u">$</span></div>
+
+            <div class="grp">Price</div>
+            <div class="fld"><label for="i11">Mend price per monitored case</label><input id="i11" type="number" min="0" step="5" value="95" /><span class="u">$</span></div>
+          </div>
+
+          <div class="ws-out">
+            <div class="grp">Annual gains</div>
+            <div class="orow gain"><div class="ol">Capacity recovered<small id="o1n">— cases</small></div><div class="ov" id="o1"></div></div>
+            <div class="orow gain"><div class="ol">Nursing hours returned<small id="o2n">— hours per year</small></div><div class="ov" id="o2"></div></div>
+            <div class="orow gain"><div class="ol">Rescues avoided<small id="o3n">— visits per year</small></div><div class="ov" id="o3"></div></div>
+
+            <div class="grp">Cost</div>
+            <div class="orow cost"><div class="ol">Mend, all monitored cases<small id="o4n">— cases monitored</small></div><div class="ov" id="o4"></div></div>
+
+            <div class="net" id="net">
+              <div class="nl" id="netlabel">Net annual benefit</div>
+              <div class="nv" id="netval"></div>
+              <div class="nsub">Return on spend <b id="roi"></b> &middot; breaks even at a price of <b id="bep"></b> per case</div>
+              <div class="bar" id="bar"></div>
+              <div class="barkey">
+                <span><i style="background:var(--accent)"></i>Capacity</span>
+                <span><i style="background:var(--gain)"></i>Labour</span>
+                <span><i style="background:var(--warn)"></i>Rescues</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+
+      <div class="excl" style="background:var(--cost-soft);border-color:var(--cost)">
+        <div class="h" style="color:var(--cost)">Where the model is fragile</div>
+        <p>Set the declined-patient count to zero and the default case turns <strong>negative</strong> — roughly a fourteen thousand dollar annual shortfall at ninety-five dollars per case. Labour and avoided rescues alone do not cover the price. The whole thing rests on the capacity term.<br /><br />That is worth stating plainly rather than hiding, because it dictates what to do next: validate the capacity assumption with three medical directors before building anything else, and be prepared to price well below ninety-five dollars for a center that will not widen its criteria. A business case with one load-bearing assumption is fine. Not knowing which one it is, is not.</p>
+      </div>
+
+      <div class="excl">
+        <div class="h">Deliberately excluded from the model</div>
+        <p><strong>Remote monitoring reimbursement.</strong> The earlier framing of this product leaned on RPM and RTM billing as a revenue line. That is unsafe to assume in orthopaedics: hip and knee arthroplasty carry a 90-day global surgical period, and routine post-operative care inside that window is bundled into the surgical fee. Whether remote monitoring can be separately billed during the global period is contested and needs a coding opinion before it appears on any slide. The model above therefore clears on operating value alone — if the billing question resolves favourably, it is upside rather than the foundation.</p>
+      </div>
+
+      <h2><span class="num">Route to market</span>Where to start and how it compounds</h2>
+
+      <ol class="seq">
+        <li><b>Physician-owned orthopaedic ASCs running a total joints programme</b><span>Highest pain, shortest decision chain, and the owners are the surgeons whose schedule the capacity argument fills. One medical director can say yes.</span></li>
+        <li><b>ASC management companies and MSOs</b><span>The large operators run centers in the hundreds under shared clinical governance. One contract propagates. This is where the economics stop being linear.</span></li>
+        <li><b>Bundled-payment conveners and at-risk orthopaedic groups</b><span>Organisations already carrying financial risk for the 90-day episode have the clearest reason to pay for what happens inside it.</span></li>
+        <li><b>Hospital outpatient departments, then post-acute</b><span>Same clinical problem, slower procurement. Approach once the ASC evidence base exists, not before.</span></li>
+      </ol>
+
+      <h2><span class="num">Position</span>Why this segment is open</h2>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Category</th><th>What they do</th><th>What they leave uncovered</th></tr></thead>
+          <tbody>
+            <tr><td class="who">Digital rehab &amp; engagement</td><td>Exercise adherence, education, PT substitution across the recovery arc.</td><td class="gap">Built for engagement, not acute deterioration. App-first, so weakest with exactly the frail patients who carry the risk.</td></tr>
+            <tr><td class="who">Discharge outreach platforms</td><td>Generic post-discharge messaging and survey workflows across service lines.</td><td class="gap">Procedure-agnostic, symptom-only, no objective vitals, no orthopaedic red-flag logic.</td></tr>
+            <tr><td class="who">EHR-native care companions</td><td>Protocolised follow-up inside the hospital&rsquo;s own record.</td><td class="gap">Assume the enterprise EHR. Most ASCs run separate, smaller systems and are simply out of scope.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The last row is the structural opening. ASCs are fragmented across ASC-specific information systems rather than the large enterprise records, which is precisely why the incumbent hospital vendors have not reached them. A product built for the ASC first inherits a segment nobody is defending.</p>
+
+      <p>Mend&rsquo;s own differentiation inside that opening is narrow and defensible: a voice call rather than an app, so an eighty-two-year-old is reachable; objective vitals fused with what she reports, so escalation does not rest on self-report alone; and a deterministic rule engine that produces an auditable reason for every verdict rather than a language model&rsquo;s opinion.</p>
+
+      <h2><span class="num">Before this is a pitch</span>Diligence register</h2>
+
+      <p>These are open questions, listed because a business case that hides them is worth less than one that does not.</p>
+
+      <div class="risk">
+        <div class="r"><div class="sev hi">High</div><div class="body"><b>Global-period billing</b><span>Whether remote monitoring is separately payable inside the 90-day arthroplasty global period. Get a coding opinion. The model above is deliberately independent of the answer.</span></div></div>
+        <div class="r"><div class="sev hi">High</div><div class="body"><b>Regulatory surface of patient-facing advice</b><span>The clinician-facing summary has a plausible clinical-decision-support path, helped by the fact that every verdict exposes its reasoning. Telling a patient directly to call 911 is a harder surface and needs counsel — do not assume the two are covered by the same argument.</span></div></div>
+        <div class="r"><div class="sev hi">High</div><div class="body"><b>Clinical threshold provenance</b><span>Escalation thresholds are currently plausible but uncited. Each needs a named source and a recorded rationale for how it was adjusted for remote use, plus medical-director sign-off. This gates any non-synthetic deployment.</span></div></div>
+        <div class="r"><div class="sev md">Medium</div><div class="body"><b>Accreditation requirements for post-op contact</b><span>If accreditation or state rules require a human follow-up contact, Mend augments rather than replaces it and the nursing-labour line shrinks. Confirm before pricing on it.</span></div></div>
+        <div class="r"><div class="sev md">Medium</div><div class="body"><b>Device adherence</b><span>Every remote monitoring product fails the same way: the cuff stays in the drawer. The voice call is the intended countermeasure, since the conversation is what prompts the measurement — but that mechanism is a hypothesis until it is measured.</span></div></div>
+        <div class="r"><div class="sev md">Medium</div><div class="body"><b>Market sizing</b><span>Center counts, ambulatory joint volumes and growth rates are asserted from general knowledge here and must be sourced before they appear in front of an investor.</span></div></div>
+      </div>
+
+      <h2><span class="num">Evidence</span>How to make the capacity claim defensible</h2>
+
+      <p>The capacity argument carries the model, and right now it rests on an assumption: that a center would genuinely widen its selection criteria given a monitored safety net. That is testable, and cheaply.</p>
+
+      <ul class="plain">
+        <li>Ask three medical directors how many patients they declined last year on post-operative safety or social grounds, and what would change their mind. This is a conversation, not a study, and it either validates the dominant term or kills it.</li>
+        <li>Run the engine in shadow mode against a retrospective cohort where the outcome is already known. It is the only setting where ground truth exists, and it produces the sensitivity and specificity figures the clinical sale eventually requires.</li>
+        <li>Instrument the first deployment for the one metric that matters commercially: cases accepted that would previously have been declined.</li>
+      </ul>
+
+      <footer class="f">
+        Educational prototype. Synthetic data only, no medical advice. Financial figures in this document are user-supplied inputs and illustrative defaults, not forecasts. Regulatory, coding and accreditation statements are open questions flagged for professional opinion, not conclusions.
+      </footer>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const IDS = ["i1","i2","i3","i4","i5","i6","i7","i8","i9","i10","i11"];
+  const money = n => "$" + Math.round(n).toLocaleString("en-US");
+  const num = (n, d) => n.toLocaleString("en-US", {minimumFractionDigits: d||0, maximumFractionDigits: d||0});
+
+  function calc(){
+    const v = {};
+    IDS.forEach(id => { const raw = parseFloat($(id).value); v[id] = isFinite(raw) ? raw : 0; });
+
+    const recoveredCases = v.i3 * (v.i4 / 100);
+    const capacityGain   = recoveredCases * v.i2;
+
+    const nurseHours     = v.i5 * 52 * (v.i7 / 100);
+    const labourGain     = nurseHours * v.i6;
+
+    const monitored      = v.i1 + recoveredCases;
+    const visitsAvoided  = monitored * (v.i8 / 100) * (v.i9 / 100);
+    const rescueGain     = visitsAvoided * v.i10;
+
+    const gains          = capacityGain + labourGain + rescueGain;
+    const cost           = monitored * v.i11;
+    const net            = gains - cost;
+    const roi            = cost > 0 ? gains / cost : Infinity;
+    const breakeven      = monitored > 0 ? gains / monitored : 0;
+
+    $("o1").textContent = money(capacityGain);
+    $("o1n").textContent = num(recoveredCases, 1) + " cases recovered";
+    $("o2").textContent = money(labourGain);
+    $("o2n").textContent = num(nurseHours) + " nurse hours per year";
+    $("o3").textContent = money(rescueGain);
+    $("o3n").textContent = num(visitsAvoided, 1) + " visits avoided";
+    $("o4").textContent = "−" + money(cost);
+    $("o4n").textContent = num(monitored) + " cases monitored";
+
+    const netEl = $("net");
+    netEl.classList.toggle("neg", net < 0);
+    $("netlabel").textContent = net < 0 ? "Net annual shortfall" : "Net annual benefit";
+    $("netval").textContent = (net < 0 ? "−" : "") + money(Math.abs(net));
+    $("roi").textContent = isFinite(roi) ? roi.toFixed(1) + "×" : "—";
+    $("bep").textContent = money(breakeven);
+
+    const tot = Math.max(gains, 1);
+    $("bar").innerHTML =
+      `<span style="width:${(capacityGain/tot*100).toFixed(1)}%;background:var(--accent)"></span>` +
+      `<span style="width:${(labourGain/tot*100).toFixed(1)}%;background:var(--gain)"></span>` +
+      `<span style="width:${(rescueGain/tot*100).toFixed(1)}%;background:var(--warn)"></span>`;
+  }
+
+  IDS.forEach(id => { $(id).addEventListener("input", calc); });
+
+  const root = document.documentElement;
+  $("theme").addEventListener("click", () => {
+    const dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+    root.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+
+  calc();
+</script>
