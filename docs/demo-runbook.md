@@ -127,31 +127,42 @@ Every real reading belongs to the operator, never a patient, and the UI labels i
 Two presenters works best: one talks, one drives. The driver never talks; the talker never
 touches the laptop.
 
-**Open on `/clinician`.** This is the daily clinician hub — worklist, Margaret's chart, Call
-now. Say who Margaret is and why post-op day 4 alone at home is the dangerous window. Don't
-explain the architecture yet. (Landing CTAs: Open clinician hub / Patient portal.)
+**Open on `/clinician`.** This is the daily clinician hub — action board, needs-attention
+shortlist, and the full worklist. There is **no** side chart pane on the hub. Say who
+Margaret is and why post-op day 4 alone at home is the dangerous window. Don't explain the
+architecture yet. (Landing CTAs: Open clinician hub / Patient portal.)
 
-**Pick the scenario** in Ops if needed (`#ops` or `Ctrl/⌘⇧M` → redirects to `/clinician#ops`)
-— PE/red for the peak cut. Ops is secondary; do not live in it.
+**Pick the scenario** in Ops if needed (`#ops` on the hub, or `Ctrl/⌘⇧M` → `/clinician#ops`)
+— PE/red for the peak cut. Ops is secondary; do not live in it. Ops is also available on the
+patient chart via `#ops`.
 
-**Trigger the call** from the hub — **Call now**. The phone rings on speaker. This is the
-moment that separates Mend from a demo video: a real outbound phone call to a real handset
-in the room. (Optional alternate: open `/patient` and tap Request a check-in call — same
-telephony path; hub live strip lights up in the clinician browser.)
+**Optional dig-deeper before the call.** Click Margaret (or any worklist / shortlist row) →
+`/clinician/<id>` opens on the **Overview** tab. Switch tabs in the UI (Trends, Notes, Orders,
+Billing); the URL `?tab=` updates and a refresh preserves the tab. At wide (`xl+`) widths a
+roster sidebar stays visible — switching patients keeps the current tab.
+
+**Trigger the call** from the hub — **Call now**. Because the hub has no chart pane, this
+navigates to Margaret's chart with Live focused (`/clinician/margaret-ellison?live=1`). The
+phone rings on speaker. This is the moment that separates Mend from a demo video: a real
+outbound phone call to a real handset in the room. (Optional alternate: open `/patient` and
+tap Request a check-in call — same telephony path. Or **Call now** from an open patient chart —
+Live swaps in place; **Show chart** returns to the tabs.)
 
 **Twilio trial (current account):** after answering, you will hear Twilio's trial announcement.
 The driver (or the person holding the phone) must **press any key** on the handset. Only then
 does the ElevenLabs media stream attach and Mend speak. Do not hang up during the trial line.
 Upgrading off Trial removes this step; until then, rehearse the keypress.
 
-**Let the conversation run in the hub.** The embedded live session shows transcript and
-clinical pane. When the agent hits the safety engine, an inline marker appears — "checking
-against the safety engine". Point at it. That marker is the architectural claim made visible:
-the model asked a deterministic function what to do.
+**Let the conversation run on Margaret Live.** The live pane shows transcript and clinical
+pane. The sticky live strip is **hidden** while you are on this focused live view. When the
+agent hits the safety engine, an inline marker appears — "checking against the safety
+engine". Point at it. That marker is the architectural claim made visible: the model asked a
+deterministic function what to do.
 
 **The escalation.** The engine returns red and the clinical pane takes over: the condition,
 one instruction, the call target, and the fired rules. Let it land before speaking. If the
-driver navigates away, the sticky live strip keeps the session reachable.
+driver leaves Live (Show chart, another tab, or Rule engine), the sticky live strip returns
+and jumps back to Margaret Live (`?live=1`).
 
 **Cut to `/family`.** Same event, the daughter's phone. Plain language, no numbers, no rule
 ids. The contrast with what the clinician sees is the point — one engine, three audiences,
@@ -159,14 +170,15 @@ each told exactly what they can act on. Prefer opening `/family` with no query s
 selecting PE in hub Ops (durable store). If you need a deep link for the PE cut, use
 `/family?state=urgent` — never `?state=attention` (that is the drift/amber frame).
 
-**Return to `/clinician`.** Worklist sorted by risk, the SBAR ready to hand off, and the audit
-trail expanded to show fired rules with their inputs, thresholds and provenance. This is
-what makes it deployable rather than a toy.
+**Return to the patient chart** (`/clinician/margaret-ellison`). Use tabs for dig-deeper —
+Overview for the SBAR handoff, Trends / Notes as needed, and the audit trail expanded to show
+fired rules with their inputs, thresholds and provenance. Hub worklist remains the morning
+board if you need the full census.
 
 **Close on `/clinician/engine`.** The vignette suite running live. Fifteen clinical cases,
 deterministic pass/fail, in front of the judges. Then the line that lands: *the model never
-decides; it extracts, and this function decides.* The live strip still returns to the hub if
-a call is active.
+decides; it extracts, and this function decides.* If a call is still active, the live strip
+appears here and returns to Margaret Live — not a hub-embedded session.
 
 **If there's time, show the drift scenario.** Margaret's heart rate climbing about 3 bpm a
 day while every individual reading sits inside the normal post-op envelope — no single
@@ -227,11 +239,13 @@ Four YC alumni building medtech will probe. Straight answers land better than he
 | Route | Purpose |
 |---|---|
 | `/` | Landing — CTAs to clinician hub and patient portal |
-| `/clinician` | Clinician hub — worklist, Call now, embedded live, Ops (`#ops`) |
+| `/clinician` | Clinician hub — action board, needs-attention, worklist, Ops (`#ops`); no side chart |
+| `/clinician/<id>` | Patient chart — tabs (`?tab=`), Call now → Live in place, Ops (`#ops`) |
+| `/clinician/<id>?live=1` | Patient Live mode (hub Call now lands here for Margaret) |
 | `/patient` | Patient portal — request check-in call |
 | `/family` | Daughter's view |
-| `/clinician/engine` | Live vignette suite |
-| `/call` | Fullscreen live call deep link (hub embed is primary) |
+| `/clinician/engine` | Live vignette suite (strip returns to Margaret Live if call active) |
+| `/call` | Fullscreen live call deep link (patient Live is the primary demo path) |
 | `/console` | Redirects to `/clinician#ops` (`Ctrl/⌘⇧M`) — never shown as product |
 | `/styleguide` | Design system reference |
 
