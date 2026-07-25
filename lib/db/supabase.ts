@@ -194,6 +194,30 @@ export type PrnRequestInsertRow = {
   decision_note?: string | null;
 };
 
+export type OhsResponseRow = {
+  id: string;
+  patient_id: string;
+  submitted_at: string;
+  day_post_op: number | null;
+  answers: unknown;
+  total: number | null;
+  band: string | null;
+  complete: boolean;
+  placeholder_wording: boolean;
+};
+
+export type OhsResponseInsert = {
+  id?: string;
+  patient_id: string;
+  submitted_at?: string;
+  day_post_op?: number | null;
+  answers: unknown;
+  total?: number | null;
+  band?: string | null;
+  complete?: boolean;
+  placeholder_wording?: boolean;
+};
+
 type TableDef<Row, Insert> = {
   Row: Row;
   Insert: Insert;
@@ -219,6 +243,7 @@ export type Database = {
         MedicationAdministrationInsert
       >;
       prn_requests: TableDef<PrnRequestRow, PrnRequestInsertRow>;
+      ohs_responses: TableDef<OhsResponseRow, OhsResponseInsert>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

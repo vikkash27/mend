@@ -233,6 +233,35 @@ where p.name like 'Margaret%'
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- ohs_responses — Oxford Hip Score submissions.
+--
+-- Answers are stored per item rather than as a total, so a score can be
+-- re-derived if the scoring is corrected, and so a partially completed
+-- questionnaire survives as what it is. `total` is null until all twelve items
+-- are answered — a part-scored PROM has no defined total and pro-rating one
+-- produces a number that looks comparable to a real score and is not.
+-- RLS off: synthetic single-tenant demo only.
+-- ---------------------------------------------------------------------------
+create table if not exists ohs_responses (
+  id            uuid primary key default gen_random_uuid(),
+  patient_id    uuid not null references patients (id) on delete cascade,
+  submitted_at  timestamptz not null default now(),
+  day_post_op   int,
+  -- { itemId: optionIndex 0..4 }
+  answers       jsonb not null,
+  total         int check (total between 0 and 48),
+  band          text,
+  complete      boolean not null default false,
+  -- true while the instrument carries placeholder wording rather than the
+  -- licensed text; totals recorded under it are within-patient trend only
+  placeholder_wording boolean not null default true
+);
+
+alter table ohs_responses disable row level security;
+create index if not exists ohs_responses_patient_submitted_idx
+  on ohs_responses (patient_id, submitted_at desc);
+
+-- ---------------------------------------------------------------------------
 -- demo_state — key/value store for console-selected demo scenario so the
 -- choice survives across Vercel serverless isolates (see lib/sim/active-scenario.ts
 -- and lib/sim/demo-state.sql). RLS off: synthetic single-tenant demo only.
