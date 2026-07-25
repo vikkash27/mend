@@ -6,26 +6,33 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * clinical shapes (`Symptoms`, `VitalsReading`, `Decision`, `TrendFinding`)
  * live in lib/clinical/types.ts and are serialized into the jsonb columns
  * below as-is, never re-derived here.
+ *
+ * These are declared with `type`, not `interface`: Supabase's generated
+ * `Database` type requires each table's Row/Insert/Update to structurally
+ * satisfy `Record<string, unknown>`, and an `interface` — unlike an object
+ * type alias — does not satisfy that check even when its fields are
+ * compatible, which otherwise silently collapses every `.from(table)` call
+ * to `never` with no useful error at the call site.
  */
-export interface PatientRow {
+export type PatientRow = {
   id: string;
   name: string;
   procedure: string;
   surgery_date: string;
   phone: string | null;
   caregiver_phone: string | null;
-}
+};
 
-export interface PatientInsert {
+export type PatientInsert = {
   id?: string;
   name: string;
   procedure: string;
   surgery_date: string;
   phone?: string | null;
   caregiver_phone?: string | null;
-}
+};
 
-export interface VitalsRow {
+export type VitalsRow = {
   id: string;
   patient_id: string;
   recorded_at: string;
@@ -38,9 +45,9 @@ export interface VitalsRow {
   source: string;
   device_label: string | null;
   quality: string;
-}
+};
 
-export interface VitalsInsert {
+export type VitalsInsert = {
   id?: string;
   patient_id: string;
   recorded_at: string;
@@ -53,9 +60,9 @@ export interface VitalsInsert {
   source: string;
   device_label?: string | null;
   quality: string;
-}
+};
 
-export interface EcgReadingRow {
+export type EcgReadingRow = {
   id: string;
   patient_id: string;
   recorded_at: string;
@@ -63,9 +70,9 @@ export interface EcgReadingRow {
   bpm: number | null;
   source: string;
   pdf_url: string | null;
-}
+};
 
-export interface EcgReadingInsert {
+export type EcgReadingInsert = {
   id?: string;
   patient_id: string;
   recorded_at: string;
@@ -73,9 +80,9 @@ export interface EcgReadingInsert {
   bpm?: number | null;
   source?: string;
   pdf_url?: string | null;
-}
+};
 
-export interface CheckinRow {
+export type CheckinRow = {
   id: string;
   patient_id: string;
   created_at: string;
@@ -86,9 +93,9 @@ export interface CheckinRow {
   decision: unknown;
   trend_findings: unknown;
   sbar: string | null;
-}
+};
 
-export interface CheckinInsert {
+export type CheckinInsert = {
   id?: string;
   patient_id: string;
   created_at?: string;
@@ -99,33 +106,38 @@ export interface CheckinInsert {
   decision?: unknown;
   trend_findings?: unknown;
   sbar?: string | null;
-}
+};
 
-export interface EscalationRow {
+export type EscalationRow = {
   id: string;
   patient_id: string;
   checkin_id: string | null;
   level: string;
   condition: string | null;
   notified_caregiver_at: string | null;
-}
+};
 
-export interface EscalationInsert {
+export type EscalationInsert = {
   id?: string;
   patient_id: string;
   checkin_id?: string | null;
   level: string;
   condition?: string | null;
   notified_caregiver_at?: string | null;
-}
+};
 
-interface TableDef<Row, Insert> {
+type TableDef<Row, Insert> = {
   Row: Row;
   Insert: Insert;
   Update: Partial<Insert>;
-}
+  // No embedded-resource (foreign-table select) relationships are declared
+  // for this demo schema, so this is always empty — but postgrest-js's
+  // GenericTable requires the field to be present, and omitting it makes
+  // every `.from(table)` call silently collapse to `never`.
+  Relationships: [];
+};
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       patients: TableDef<PatientRow, PatientInsert>;
@@ -137,7 +149,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: Record<string, never>;
   };
-}
+};
 
 let cachedClient: SupabaseClient<Database> | null | undefined;
 
