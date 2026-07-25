@@ -236,6 +236,15 @@ const ENTRIES: readonly RuleEntry[] = [
     thresholds: [feverMax, tachycardia],
   },
   {
+    id: "pe.breathless_no_tachycardia",
+    origin: "red-flag-engine",
+    severity: "amber",
+    condition: "New breathlessness or chest pain",
+    test: "Breathlessness or chest pain reported with no corroborating tachycardia, desaturation or ECG finding. Downgrades the urgency, not the concern — a normal heart rate does not exclude a clot.",
+    inputs: [DAY, BREATHLESS, CHEST_PAIN, HR],
+    thresholds: [tachycardia],
+  },
+  {
     id: "dvt.calf_pain_or_swelling",
     origin: "red-flag-engine",
     severity: "amber",

@@ -300,10 +300,13 @@ describe("evaluate — rationale threshold values are the single source of truth
       symptoms: { breathless: true },
       vitals: vitals({ spo2: expectedFloor }),
     });
-    // At the boundary the PE-spo2 rule must not fire, and spo2 92 is still
-    // >= 90 so isolated hypoxia won't fire either, and no other rule is
-    // satisfied by this input -> falls all the way through to green.
-    expect(atBoundary.level).toBe("green");
+    // At the boundary the PE-spo2 rule must not fire, and spo2 92 is still >= 90
+    // so isolated hypoxia won't either. The verdict is still amber, because
+    // uncorroborated breathlessness is never green — so assert on the rule that
+    // is actually under test rather than on the overall level, which would make
+    // this a test of two things at once.
+    expect(atBoundary.firedRules).not.toContain("pe.breathless_with_low_spo2");
+    expect(atBoundary.firedRules).toEqual(["pe.breathless_no_tachycardia"]);
 
     const justUnder = evaluate({
       dayPostOp: day,

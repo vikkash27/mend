@@ -234,6 +234,21 @@ const RED_RULES: Rule[] = [
 
 const AMBER_RULES: Rule[] = [
   {
+    id: "pe.breathless_no_tachycardia",
+    condition: "New breathlessness or chest pain",
+    severity: "amber",
+    action:
+      "Contact the surgeon's office today. This needs assessing even though the other readings look normal.",
+    call: "surgeon_office",
+    // Reaching here means the symptom was reported and nothing corroborated it.
+    // A normal heart rate does not exclude a pulmonary embolism, so this must
+    // never fall through to green. Downgrade the urgency, not the concern —
+    // and deliberately avoid naming a suspected PE without corroboration.
+    test: (ctx) => breathlessOrChestPain(ctx),
+    rationale: (ctx) =>
+      `Breathlessness${ctx.symptoms.chestPain ? "/chest pain" : ""} reported with no corroborating tachycardia, desaturation or ECG finding (heart rate ${ctx.vitals.hr ?? "n/a"}) — a normal heart rate does not exclude a clot.`,
+  },
+  {
     id: "dvt.calf_pain_or_swelling",
     condition: "Possible DVT",
     severity: "amber",

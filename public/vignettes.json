@@ -641,7 +641,7 @@
     "name": "E4",
     "group": "Safety edges and threshold boundaries",
     "day": 4,
-    "note": "Exactly at the day-4 tachycardia threshold of 110. The test is strictly greater-than, so nothing fires.",
+    "note": "Exactly at the day-4 tachycardia threshold of 110. The test is strictly greater-than, so the PE tachycardia rule does not fire — but breathlessness with an uncorroborated heart rate is never green, so the safety net catches it at amber.",
     "symptoms": {
       "breathless": true
     },
@@ -652,15 +652,23 @@
       "hr": 110
     },
     "expected": {
-      "level": "green"
+      "level": "amber",
+      "condition": "New breathlessness or chest pain",
+      "firedRules": [
+        "pe.breathless_no_tachycardia"
+      ]
     },
     "actual": {
-      "level": "green",
-      "action": "Continue the current recovery plan. No red-flag symptoms or vitals were detected.",
+      "level": "amber",
+      "condition": "New breathlessness or chest pain",
+      "action": "Contact the surgeon's office today. This needs assessing even though the other readings look normal.",
+      "call": "surgeon_office",
       "rationale": [
-        "Day 4 vitals and symptoms are within the expected recovery envelope."
+        "Breathlessness reported with no corroborating tachycardia, desaturation or ECG finding (heart rate 110) — a normal heart rate does not exclude a clot."
       ],
-      "firedRules": []
+      "firedRules": [
+        "pe.breathless_no_tachycardia"
+      ]
     },
     "pass": true,
     "mismatches": []
@@ -705,7 +713,7 @@
     "name": "E6",
     "group": "Safety edges and threshold boundaries",
     "day": 4,
-    "note": "Exactly at the day-4 PE oxygen floor of 92%, and still at or above the hard 90% hypoxia line.",
+    "note": "Exactly at the day-4 PE oxygen floor of 92%, and still at or above the hard 90% hypoxia line, so neither oxygen rule fires — but uncorroborated breathlessness still lands at amber rather than green.",
     "symptoms": {
       "breathless": true
     },
@@ -716,15 +724,23 @@
       "spo2": 92
     },
     "expected": {
-      "level": "green"
+      "level": "amber",
+      "condition": "New breathlessness or chest pain",
+      "firedRules": [
+        "pe.breathless_no_tachycardia"
+      ]
     },
     "actual": {
-      "level": "green",
-      "action": "Continue the current recovery plan. No red-flag symptoms or vitals were detected.",
+      "level": "amber",
+      "condition": "New breathlessness or chest pain",
+      "action": "Contact the surgeon's office today. This needs assessing even though the other readings look normal.",
+      "call": "surgeon_office",
       "rationale": [
-        "Day 4 vitals and symptoms are within the expected recovery envelope."
+        "Breathlessness reported with no corroborating tachycardia, desaturation or ECG finding (heart rate n/a) — a normal heart rate does not exclude a clot."
       ],
-      "firedRules": []
+      "firedRules": [
+        "pe.breathless_no_tachycardia"
+      ]
     },
     "pass": true,
     "mismatches": []
