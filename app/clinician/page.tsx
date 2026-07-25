@@ -8,7 +8,7 @@ import { buildRoster } from "@/lib/sim/roster";
 /**
  * /clinician — the clinician's daily hub.
  *
- * Action board, needs-attention shortlist, full worklist, and Ops tools.
+ * Action board, needs-attention shortlist, and links into the patient panel.
  * Live check-in opens on the demo patient’s chart. Renders from synthetic
  * roster fixtures without credentials.
  */

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SeverityChip } from "@/components/ui/severity-chip";
 import type { Severity } from "@/lib/clinical/types";
 import type { RosterPatient } from "@/lib/sim/roster";
+import { captureHref } from "@/lib/ui/capture-route";
 import { cn } from "@/lib/utils";
 import { TABLE_CELL as CELL, TABLE_HEAD as HEAD } from "./ClinicianShell";
 import { clockTime, timeAgo } from "./format";
@@ -86,6 +87,9 @@ export function Worklist({
             </th>
             <th scope="col" className={cn(HEAD, "md:text-right")}>
               RPM days
+            </th>
+            <th scope="col" className={HEAD}>
+              Capture
             </th>
           </tr>
         </thead>
@@ -202,6 +206,15 @@ export function Worklist({
                         : `${16 - patient.billing.monitoringDays} to 99454`}
                     </span>
                   </span>
+                </td>
+
+                <td className={cn(CELL, "md:w-[8%]")} data-label="Capture">
+                  <Link
+                    href={captureHref(patient.id)}
+                    className="relative z-10 inline-flex min-h-11 items-center text-label font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
+                  >
+                    Capture
+                  </Link>
                 </td>
               </tr>
             );

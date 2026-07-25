@@ -28,8 +28,8 @@ import {
 import { ChartNotes } from "./ChartNotes";
 import { Panel, SectionHeading } from "./ClinicianShell";
 import { clockTime, fullDate, timeAgo } from "./format";
-import { HubOpsPanel } from "./HubOpsPanel";
 import { LatestReading } from "./LatestReading";
+import { PatientCapture } from "./PatientCapture";
 import { SbarCard } from "./SbarCard";
 import { TrendChart } from "./TrendChart";
 import {
@@ -109,7 +109,6 @@ export function PatientChart({
   const [focusLive, setFocusLive] = useState(initialLiveFocus);
   const [activeTab, setActiveTab] = useState<ChartTabId>(initialTab);
   const [callState, setCallState] = useState<CallActionState>({ kind: "idle" });
-  const [opsOpen, setOpsOpen] = useState(false);
   const prevLiveActive = useRef(liveActive);
 
   useEffect(() => {
@@ -131,18 +130,6 @@ export function PatientChart({
     }
     prevLiveActive.current = liveActive;
   }, [liveActive]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#ops") {
-      setOpsOpen(true);
-    }
-    const onHash = () => {
-      if (window.location.hash === "#ops") setOpsOpen(true);
-    };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
 
   const callNow = useCallback(async () => {
     setCallState({ kind: "pending" });
@@ -289,6 +276,8 @@ export function PatientChart({
             <CallStatus state={callState} />
           </div>
         </div>
+
+        <PatientCapture patientId={patient.id} density="strip" />
 
         {showLivePane ? (
           <div className="space-y-4">
@@ -535,27 +524,6 @@ export function PatientChart({
             </div>
           </>
         )}
-
-        <section id="ops" className="scroll-mt-24 space-y-4 border-t border-line pt-8">
-          <details
-            open={opsOpen}
-            onToggle={(e) => setOpsOpen((e.target as HTMLDetailsElement).open)}
-            className="group"
-          >
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg border border-line bg-raised px-4 py-3 text-label font-medium text-ink shadow-card marker:content-none [&::-webkit-details-marker]:hidden">
-              <span>Ops — scenario, vitals, ECG, BLE, transcript</span>
-              <span className="numeric text-meta font-normal text-ink-tertiary group-open:hidden">
-                Show
-              </span>
-              <span className="numeric hidden text-meta font-normal text-ink-tertiary group-open:inline">
-                Hide
-              </span>
-            </summary>
-            <div className="pt-5">
-              <HubOpsPanel />
-            </div>
-          </details>
-        </section>
     </div>
   );
 }

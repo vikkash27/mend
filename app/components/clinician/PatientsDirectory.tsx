@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { RosterPatient } from "@/lib/sim/roster";
 import { ActionBoard } from "./ActionBoard";
-import { HubOpsPanel } from "./HubOpsPanel";
 import { SectionHeading } from "./ClinicianShell";
 import { fullDate } from "./format";
 import { Worklist } from "./Worklist";
@@ -21,17 +20,6 @@ export function PatientsDirectory({
   persistence: string;
 }) {
   const now = useMemo(() => new Date(nowIso), [nowIso]);
-  const [opsOpen, setOpsOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#ops") setOpsOpen(true);
-    const onHash = () => {
-      if (window.location.hash === "#ops") setOpsOpen(true);
-    };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
 
   return (
     <div className="space-y-8">
@@ -57,27 +45,6 @@ export function PatientsDirectory({
         />
         <Worklist patients={patients} now={now} />
       </div>
-
-      <section id="ops" className="scroll-mt-24 space-y-4 border-t border-line pt-8">
-        <details
-          open={opsOpen}
-          onToggle={(e) => setOpsOpen((e.target as HTMLDetailsElement).open)}
-          className="group"
-        >
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg border border-line bg-raised px-4 py-3 text-label font-medium text-ink shadow-card marker:content-none [&::-webkit-details-marker]:hidden">
-            <span>Ops — scenario, vitals, ECG, BLE, transcript</span>
-            <span className="numeric text-meta font-normal text-ink-tertiary group-open:hidden">
-              Show
-            </span>
-            <span className="numeric hidden text-meta font-normal text-ink-tertiary group-open:inline">
-              Hide
-            </span>
-          </summary>
-          <div className="pt-5">
-            <HubOpsPanel />
-          </div>
-        </details>
-      </section>
     </div>
   );
 }

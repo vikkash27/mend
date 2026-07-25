@@ -8,7 +8,7 @@ import { buildRoster } from "@/lib/sim/roster";
  * /clinician/patients — full panel directory.
  *
  * The worklist lives here (not beside a single chart). Open a row for the
- * chart; Call now and Ops stay available for the demo.
+ * chart; Capture links open the patient-scoped capture desk.
  */
 
 export const dynamic = "force-dynamic";
