@@ -28,7 +28,11 @@ import type { EcgReading, Phase, Severity, Symptoms, VitalsReading } from "./typ
  */
 const LITERAL_SOURCE =
   "Hard-coded constant in lib/clinical/red-flag-engine.ts, not phase-derived. " +
-  "Plausible-but-uncited: general post-op physiology. Needs NEWS2/AAOS citation before clinical use.";
+  "Both lines are NEWS2-anchored (Royal College of Physicians 2017; PMID 31092526): " +
+  "systolic BP 90 mmHg is the exact NEWS2 3-point boundary, and SpO2 90% sits one " +
+  "point inside NEWS2's own 3-point band (<=91%). A single parameter scoring 3 " +
+  "triggers urgent review in NEWS2, which is why these fire red alone. " +
+  "See docs/adjudicated/news2-vital-thresholds.md.";
 
 const TREND_SOURCE =
   "Fixed per-day rate threshold in lib/clinical/trends.ts, phase-independent by design. " +

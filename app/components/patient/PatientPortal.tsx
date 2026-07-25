@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { MendLogo } from "@/app/components/brand/MendLogo";
 import { PhoneFrame } from "@/app/components/device/PhoneFrame";
+import { MedicationList } from "@/app/components/prn/MedicationList";
+import { OhsQuestionnaire } from "@/app/components/ohs/OhsQuestionnaire";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Button } from "@/components/ui/button";
 import { SeverityChip } from "@/components/ui/severity-chip";
@@ -22,6 +24,8 @@ export interface PatientPortalProps {
   dayPostOp: number;
   procedure: string;
   level: Severity;
+  /** Rule ids behind today's verdict — enriches the clinician's PRN notification. */
+  firedRules?: string[];
   headline: string;
   lede: string;
   /** Latest physiologic snapshot for the summary card (patient seat may show numbers). */
@@ -58,6 +62,7 @@ export function PatientPortal({
   dayPostOp,
   procedure,
   level,
+  firedRules = [],
   headline,
   lede,
   hrBpm,
@@ -106,6 +111,8 @@ export function PatientPortal({
       });
     }
   }, []);
+
+  const [showOhs, setShowOhs] = useState(false);
 
   return (
     <PhoneFrame framed={framed} stage>
@@ -190,6 +197,37 @@ export function PatientPortal({
             speaker, then press any key when you hear the trial message.
           </p>
         ) : null}
+
+        {showOhs ? (
+          <div className="pt-4">
+            <OhsQuestionnaire dayPostOp={dayPostOp} onClose={() => setShowOhs(false)} />
+          </div>
+        ) : (
+          <>
+            <div className="pt-4">
+              <MedicationList
+                dayPostOp={dayPostOp}
+                currentSeverity={level}
+                firedRules={firedRules}
+                painScore={painScore}
+              />
+            </div>
+
+            {/* The Oxford Hip Score asks about the past four weeks, so it is a
+                periodic prompt rather than part of the daily surface. Offered,
+                never pushed — a questionnaire that nags stops being answered
+                honestly. */}
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={() => setShowOhs(true)}
+                className="min-h-12 w-full rounded-xl border border-line bg-wash px-3.5 text-lg text-ink-secondary"
+              >
+                Answer 12 questions about your hip
+              </button>
+            </div>
+          </>
+        )}
 
         <div className="mt-auto space-y-2 pt-3">
           <p className="text-lg text-ink-tertiary">

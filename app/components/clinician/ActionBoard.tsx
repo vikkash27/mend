@@ -9,6 +9,7 @@ import { startLiveCall } from "@/lib/sim/live-call";
 import type { RosterPatient } from "@/lib/sim/roster";
 import { cn } from "@/lib/utils";
 import { pickDefaultPatientId } from "./hub-selection";
+import { PrnQueue } from "@/app/components/prn/PrnQueue";
 import { PracticeSummary } from "./PracticeSummary";
 
 type CallActionState =
@@ -101,6 +102,10 @@ export function ActionBoard({
   return (
     <div className="space-y-5">
       <PracticeSummary patients={patients} />
+
+      {/* Above the roster: a patient waiting on analgesia is waiting in pain,
+          and the queue renders nothing at all when it is empty. */}
+      <PrnQueue />
 
       <div className="flex flex-col gap-3 rounded-xl border border-line bg-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">

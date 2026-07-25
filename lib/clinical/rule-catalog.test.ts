@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { TREND_ESCALATION_RULE_ID } from "./compose";
+import { getPhase } from "./recovery-graph";
 import { RULE_CATALOG, auditRule, ruleEntry } from "./rule-catalog";
 
 /**
@@ -66,7 +67,20 @@ describe("auditRule resolves provenance against the real phase envelope", () => 
 
   it("carries the phase envelope's own source string, not a paraphrase", () => {
     const audit = auditRule("pe.breathless_with_tachycardia", ctx);
-    expect(audit.thresholds[0].source).toContain("NEWS2/AAOS");
+    // Asserted by identity against the envelope rather than by matching a
+    // substring of it. A substring assertion passes on a paraphrase that merely
+    // happens to contain the phrase, which is the one thing this test exists to
+    // rule out — and it is what let the old placeholder wording sit here
+    // unnoticed after the provenance behind it had changed.
+    expect(audit.thresholds[0].source).toBe(getPhase(4).normalEnvelope.source);
+  });
+
+  it("cites NEWS2 for the heart-rate envelope without claiming 100 bpm is a NEWS2 boundary", () => {
+    const source = getPhase(4).normalEnvelope.source;
+    expect(source).toContain("PMID 31092526");
+    // NEWS2 steps at 90 and 110. The engine's 100 sits mid-band, and the source
+    // string has to keep saying so — this is the honest half of the citation.
+    expect(source).toContain("NOT a NEWS2 boundary");
   });
 
   it("marks a hard-coded threshold as hard-coded rather than borrowing the envelope's source", () => {
