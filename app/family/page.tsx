@@ -7,9 +7,11 @@ import { composeDecision } from "@/lib/clinical/compose";
 import { evaluate } from "@/lib/clinical/red-flag-engine";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluateTrends } from "@/lib/clinical/trends";
-import type { Decision, TrendFinding, VitalsReading } from "@/lib/clinical/types";
+import type { Decision, Symptoms, TrendFinding, VitalsReading } from "@/lib/clinical/types";
 import { buildFallbackSbar } from "@/lib/llm/sbar";
+import { getActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals, type Scenario } from "@/lib/sim/fixtures";
+import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
 
 /**
  * /family — the daughter's view, read on a phone at work.
@@ -21,9 +23,10 @@ import { scenarioEcg, scenarioHistory, scenarioVitals, type Scenario } from "@/l
  * engine over the shipped fixtures; only the words are translated for a
  * family reader (app/components/family/copy.ts).
  *
- *   /family                    the well state (green fixture)
- *   /family?state=attention    the attention state (drift fixture, raised
- *                              green-to-amber by the trend engine)
+ * Scenario resolution (query param > active console store > green):
+ *   /family                    active scenario from the console store
+ *   /family?state=attention    drift fixture (harness / deep link)
+ *   /family?state=well         green fixture (harness / deep link)
  */
 
 export const dynamic = "force-dynamic";
@@ -51,6 +54,15 @@ interface FamilyState {
   history: VitalsReading[];
 }
 
+/** Scenario-appropriate symptom fixtures so the engine path matches the
+ * console's pe / green / drift demos — never a hand-authored severity. */
+function symptomsFor(scenario: Scenario): Symptoms {
+  if (scenario === "pe") {
+    return { breathless: true, chestPain: true, painScore: 4, painControlled: true };
+  }
+  return { painScore: 3, painControlled: true, breathless: false };
+}
+
 /** Both verdicts come from the engine over the shipped fixtures — the level
  * on this screen is never authored copy. */
 function loadState(scenario: Scenario): FamilyState {
@@ -60,9 +72,10 @@ function loadState(scenario: Scenario): FamilyState {
     history.map(() => ({})),
     getPhase(DAY_POST_OP),
   );
+  const symptoms = symptomsFor(scenario);
   const base = evaluate({
     dayPostOp: DAY_POST_OP,
-    symptoms: { painScore: 3, painControlled: true, breathless: false },
+    symptoms,
     vitals: scenarioVitals(scenario, new Date()),
     ecg: scenarioEcg(scenario),
   });
@@ -130,9 +143,9 @@ export default async function FamilyPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const attention = first(params.state) === "attention";
+  const scenario = resolveFamilyScenario(first(params.state), getActiveScenario());
 
-  const state = loadState(attention ? "drift" : "green");
+  const state = loadState(scenario);
   const copy = familyCopy(state.decision, state.findings);
   const now = new Date();
   const days = lastSevenDays(state.history, now);

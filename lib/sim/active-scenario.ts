@@ -2,11 +2,27 @@ import type { Scenario } from "./fixtures";
 
 /**
  * Process-local active demo scenario. The console selector writes here;
- * `/api/checkin` and `/api/triage` read it when falling back to fixtures
- * (no Supabase / empty tables). Single-process demo assumption — fine for
- * the hackathon stage box, not a multi-instance production store.
+ * `/api/checkin`, `/api/triage`, `/family`, and `/call` read it when no
+ * explicit query param overrides (and APIs fall back to fixtures with no
+ * Supabase / empty tables).
+ *
+ * Stored on `globalThis` so Next.js's separate bundles for Route Handlers
+ * and Server Components share one value in the same Node process. A plain
+ * module `let` silently forks into two stores under Turbopack/webpack —
+ * the console would update one and `/family` would read the other.
+ * Still a single-process demo assumption, not a multi-instance production
+ * store.
  */
-let active: Scenario = "green";
+
+const GLOBAL_KEY = "__mendActiveScenario" as const;
+
+type MendGlobal = typeof globalThis & {
+  [GLOBAL_KEY]?: Scenario;
+};
+
+function store(): MendGlobal {
+  return globalThis as MendGlobal;
+}
 
 export const SCENARIOS = ["green", "pe", "drift"] as const satisfies readonly Scenario[];
 
@@ -33,10 +49,10 @@ export function isScenario(value: unknown): value is Scenario {
 }
 
 export function getActiveScenario(): Scenario {
-  return active;
+  return store()[GLOBAL_KEY] ?? "green";
 }
 
 export function setActiveScenario(scenario: Scenario): Scenario {
-  active = scenario;
-  return active;
+  store()[GLOBAL_KEY] = scenario;
+  return scenario;
 }

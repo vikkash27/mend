@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { CallStage } from "@/app/components/call/CallStage";
-import { buildTimeline, parseStage } from "@/app/components/call/timeline";
+import { buildTimeline } from "@/app/components/call/timeline";
+import { composeDecision } from "@/lib/clinical/compose";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluate } from "@/lib/clinical/red-flag-engine";
 import { DEFAULT_PATIENT_FIRST_NAME, firstName, scriptForDecision } from "@/lib/clinical/scripts";
+import { evaluateTrends } from "@/lib/clinical/trends";
 import { fetchDemoPatient } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { lastCheckinSummary } from "@/lib/memory/last-checkin";
-import { scenarioEcg, scenarioVitals } from "@/lib/sim/fixtures";
+import { getActiveScenario } from "@/lib/sim/active-scenario";
+import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
+import { resolveCallStage } from "@/lib/sim/resolve-demo";
 
 /**
  * /call — the live call view, projected behind the presenter.
@@ -24,9 +28,11 @@ import { scenarioEcg, scenarioVitals } from "@/lib/sim/fixtures";
  * to for realtime. With no credentials — the state a teammate cloning the
  * repo is in — the page renders identically from fixtures.
  *
- *   /call                    the calm monitoring frame (default)
+ * Scenario resolution (query param > active console store > green default):
+ *   /call                    frame from the console's active scenario
+ *                            (pe → escalated; green/drift → monitoring)
  *   /call?play=1             plays the call through at the real pace
- *   /call?stage=escalated    the red takeover, frozen
+ *   /call?stage=escalated    the red takeover, frozen (harness / deep link)
  *   /call?stage=checking     the engine mid-consultation, frozen
  *   /call?speed=2            playback multiplier
  */
@@ -114,8 +120,12 @@ export default async function CallPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const stage = parseStage(first(params.stage));
-  const playing = first(params.play) === "1" && stage === undefined;
+  const activeScenario = getActiveScenario();
+  const stageParam = first(params.stage);
+  const hasExplicitStage =
+    stageParam === "monitoring" || stageParam === "checking" || stageParam === "escalated";
+  const playing = first(params.play) === "1" && !hasExplicitStage;
+  const stage = resolveCallStage(stageParam, activeScenario, { playing });
   const speed = parseSpeed(first(params.speed));
 
   const identity = await loadIdentity();
@@ -127,16 +137,30 @@ export default async function CallPage({
   const recalled = identity.id ? await lastCheckinSummary(identity.id) : "";
 
   const now = new Date();
-  const baselineVitals = scenarioVitals("green", now);
+  // Calm band uses the active scenario when it is green/drift; the PE
+  // escalation arc always needs a well baseline then the acute pe reading.
+  const baselineVitals =
+    activeScenario === "drift"
+      ? scenarioVitals("drift", now)
+      : scenarioVitals("green", now);
   const acuteVitals = scenarioVitals("pe", now);
 
   // Both verdicts come from the engine, over the shipped fixtures.
-  const routineDecision = evaluate({
+  const routineBase = evaluate({
     dayPostOp,
     symptoms: { painScore: 3, painControlled: true, breathless: false },
     vitals: baselineVitals,
-    ecg: scenarioEcg("green"),
+    ecg: scenarioEcg(activeScenario === "drift" ? "drift" : "green"),
   });
+  const driftFindings =
+    activeScenario === "drift"
+      ? evaluateTrends(
+          scenarioHistory("drift"),
+          scenarioHistory("drift").map(() => ({})),
+          phase,
+        )
+      : [];
+  const routineDecision = composeDecision(routineBase, driftFindings);
   const escalationDecision = evaluate({
     dayPostOp,
     symptoms: { breathless: true },
@@ -163,7 +187,7 @@ export default async function CallPage({
       }}
       dayPostOp={dayPostOp}
       phase={phase}
-      ecg={scenarioEcg("green")}
+      ecg={scenarioEcg(activeScenario === "pe" ? "pe" : activeScenario === "drift" ? "drift" : "green")}
       baselineVitals={baselineVitals}
       events={events}
       openingDecision={routineDecision}
