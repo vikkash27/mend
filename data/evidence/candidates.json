@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-07-25T16:12:33.404Z",
+  "retrievedAt": "2026-07-25T16:54:36.109Z",
   "hitsPerRule": 12,
   "rules": [
     {
@@ -867,15 +867,6 @@
           "url": "https://pubmed.ncbi.nlm.nih.gov/34591127/"
         },
         {
-          "pmid": "34218905",
-          "title": "Preoperative inflammatory mediators and postoperative delirium: systematic review and meta-analysis.",
-          "journal": "Br J Anaesth",
-          "year": "2021",
-          "authors": "Noah AM, Almghairbi D, Evley R, et al.",
-          "doi": "10.1016/j.bja.2021.04.033",
-          "url": "https://pubmed.ncbi.nlm.nih.gov/34218905/"
-        },
-        {
           "pmid": "36031067",
           "title": "The impact of regional versus general anesthesia on postoperative neurocognitive outcomes in elderly patients undergoing hip fracture surgery: A systematic review and meta-analysis.",
           "journal": "Int J Surg",
@@ -883,6 +874,15 @@
           "authors": "Bhushan S, Huang X, Duan Y, et al.",
           "doi": "10.1016/j.ijsu.2022.106854",
           "url": "https://pubmed.ncbi.nlm.nih.gov/36031067/"
+        },
+        {
+          "pmid": "34218905",
+          "title": "Preoperative inflammatory mediators and postoperative delirium: systematic review and meta-analysis.",
+          "journal": "Br J Anaesth",
+          "year": "2021",
+          "authors": "Noah AM, Almghairbi D, Evley R, et al.",
+          "doi": "10.1016/j.bja.2021.04.033",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34218905/"
         },
         {
           "pmid": "34302312",

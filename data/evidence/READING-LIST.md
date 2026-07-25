@@ -243,8 +243,8 @@ Retrieved 2026-07-25 · 12 hits per threshold.
 | ☐ | [34623788](https://pubmed.ncbi.nlm.nih.gov/34623788/) | 2021 | N Engl J Med | Spinal Anesthesia or General Anesthesia for Hip Surgery in Older Adults. |
 | ☐ | [35156194](https://pubmed.ncbi.nlm.nih.gov/35156194/) | 2022 | Cochrane Database Syst Rev | Arthroplasties for hip fracture in adults. |
 | ☐ | [34591127](https://pubmed.ncbi.nlm.nih.gov/34591127/) | 2022 | Calcif Tissue Int | Effects of Orthogeriatric Care Models on Outcomes of Hip Fracture Patients: A Systematic Review and Meta-Analysis. |
-| ☐ | [34218905](https://pubmed.ncbi.nlm.nih.gov/34218905/) | 2021 | Br J Anaesth | Preoperative inflammatory mediators and postoperative delirium: systematic review and meta-analysis. |
 | ☐ | [36031067](https://pubmed.ncbi.nlm.nih.gov/36031067/) | 2022 | Int J Surg | The impact of regional versus general anesthesia on postoperative neurocognitive outcomes in elderly patients undergoing hip fracture surgery: A systematic review and meta-analysis. |
+| ☐ | [34218905](https://pubmed.ncbi.nlm.nih.gov/34218905/) | 2021 | Br J Anaesth | Preoperative inflammatory mediators and postoperative delirium: systematic review and meta-analysis. |
 | ☐ | [34302312](https://pubmed.ncbi.nlm.nih.gov/34302312/) | 2022 | J Clin Nurs | Evaluation of the effectiveness of delirium prevention care protocol for the patients with hip fracture: A randomised controlled study. |
 | ☐ | [21716111](https://pubmed.ncbi.nlm.nih.gov/21716111/) | 2011 | Curr Opin Crit Care | Postoperative cognitive disorders. |
 | ☐ | [38267405](https://pubmed.ncbi.nlm.nih.gov/38267405/) | 2024 | Transl Psychiatry | Prediction models for postoperative delirium in elderly patients with machine-learning algorithms and SHapley Additive exPlanations. |

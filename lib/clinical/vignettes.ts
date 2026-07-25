@@ -257,8 +257,12 @@ export const VIGNETTES: readonly Vignette[] = [
     day: 4,
     symptoms: { breathless: true },
     vitals: vitals({ hr: 110 }),
-    expected: { level: "green" },
-    note: "Exactly at the day-4 tachycardia threshold of 110. The test is strictly greater-than, so nothing fires.",
+    expected: {
+      level: "amber",
+      condition: "New breathlessness or chest pain",
+      firedRules: ["pe.breathless_no_tachycardia"],
+    },
+    note: "Exactly at the day-4 tachycardia threshold of 110. The test is strictly greater-than, so the PE tachycardia rule does not fire — but breathlessness with an uncorroborated heart rate is never green, so the safety net catches it at amber.",
   },
   {
     name: "E5",
@@ -279,8 +283,12 @@ export const VIGNETTES: readonly Vignette[] = [
     day: 4,
     symptoms: { breathless: true },
     vitals: vitals({ spo2: 92 }),
-    expected: { level: "green" },
-    note: "Exactly at the day-4 PE oxygen floor of 92%, and still at or above the hard 90% hypoxia line.",
+    expected: {
+      level: "amber",
+      condition: "New breathlessness or chest pain",
+      firedRules: ["pe.breathless_no_tachycardia"],
+    },
+    note: "Exactly at the day-4 PE oxygen floor of 92%, and still at or above the hard 90% hypoxia line, so neither oxygen rule fires — but uncorroborated breathlessness still lands at amber rather than green.",
   },
   {
     name: "E7",
