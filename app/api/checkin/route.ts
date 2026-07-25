@@ -1,0 +1,229 @@
+import { NextResponse } from "next/server";
+import { composeDecision } from "@/lib/clinical/compose";
+import { getPhase } from "@/lib/clinical/recovery-graph";
+import { evaluate } from "@/lib/clinical/red-flag-engine";
+import { DEFAULT_PATIENT_FIRST_NAME, firstName } from "@/lib/clinical/scripts";
+import { evaluateTrends } from "@/lib/clinical/trends";
+import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
+import {
+  fetchDemoPatient,
+  fetchLatestEcg,
+  fetchLatestVitals,
+  fetchVitalsHistory,
+  insertCheckin,
+  insertEscalation,
+} from "@/lib/db/queries";
+import { getSupabaseClient } from "@/lib/db/supabase";
+import { extractSymptoms } from "@/lib/llm/extract";
+import { generateSbar } from "@/lib/llm/sbar";
+import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
+
+/**
+ * POST /api/checkin — the full check-in pipeline.
+ *
+ * transcript -> extractSymptoms (Claude, tool-forced) -> load vitals/ECG/
+ * history -> evaluate() + evaluateTrends() -> composeDecision() ->
+ * generateSbar() on non-green -> persist checkin + escalation -> respond.
+ *
+ * Unlike /api/triage, this route is not on a live-call latency budget, so
+ * it is allowed to call Claude (symptom extraction, and SBAR generation
+ * only when the composed decision is non-green). Severity itself still
+ * comes from nowhere but `evaluate()`, possibly raised by
+ * `composeDecision()` — Claude's output here can only ever describe or
+ * summarize an already-decided Decision, never set or change its level.
+ */
+
+const DEFAULT_DAY_POST_OP = 4;
+const FALLBACK_SCENARIO = "green" as const;
+const DEMO_PATIENT_PROCEDURE_FALLBACK = "hip hemiarthroplasty";
+
+interface CheckinRequestBody {
+  transcript: string;
+  dayPostOp?: number;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseBody(raw: unknown): CheckinRequestBody | undefined {
+  if (!isPlainObject(raw)) {
+    return undefined;
+  }
+  if (typeof raw.transcript !== "string" || raw.transcript.trim().length === 0) {
+    return undefined;
+  }
+  if (
+    raw.dayPostOp !== undefined &&
+    (typeof raw.dayPostOp !== "number" || !Number.isFinite(raw.dayPostOp))
+  ) {
+    return undefined;
+  }
+
+  return { transcript: raw.transcript, dayPostOp: raw.dayPostOp as number | undefined };
+}
+
+interface ClinicalContext {
+  patientId: string | undefined;
+  patientName: string;
+  procedure: string;
+  vitals: VitalsReading;
+  ecg: EcgReading | undefined;
+  history: VitalsReading[];
+}
+
+/** Loads the demo patient's identity plus latest vitals/ECG/history from
+ * Supabase, falling back to fixtures whenever Supabase is unavailable,
+ * unreachable, slow, or has no rows yet — never throws, never hangs
+ * (lib/db/queries.ts times out every read). */
+async function loadClinicalContext(): Promise<ClinicalContext> {
+  const now = new Date();
+  const fallback: ClinicalContext = {
+    patientId: undefined,
+    patientName: DEFAULT_PATIENT_FIRST_NAME,
+    procedure: DEMO_PATIENT_PROCEDURE_FALLBACK,
+    vitals: scenarioVitals(FALLBACK_SCENARIO, now),
+    ecg: scenarioEcg(FALLBACK_SCENARIO),
+    history: scenarioHistory(FALLBACK_SCENARIO),
+  };
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("[api/checkin] Supabase client unavailable — using fixture vitals/ECG/history.");
+    return fallback;
+  }
+
+  try {
+    const patient = await fetchDemoPatient(supabase);
+    if (!patient) {
+      console.warn("[api/checkin] demo patient not found — using fixture vitals/ECG/history.");
+      return fallback;
+    }
+
+    const [vitals, ecg, history] = await Promise.all([
+      fetchLatestVitals(supabase, patient.id),
+      fetchLatestEcg(supabase, patient.id),
+      fetchVitalsHistory(supabase, patient.id),
+    ]);
+
+    return {
+      patientId: patient.id,
+      patientName: firstName(patient.name),
+      procedure: patient.procedure,
+      vitals: vitals ?? fallback.vitals,
+      ecg: ecg ?? fallback.ecg,
+      history: history.length > 0 ? history : fallback.history,
+    };
+  } catch (err) {
+    console.warn("[api/checkin] Supabase read failed — using fixture vitals/ECG/history.", err);
+    return fallback;
+  }
+}
+
+/**
+ * `evaluateTrends` wants one `Symptoms` entry per history point (for the
+ * pain-score trend). The schema does not store a symptoms snapshot per
+ * vitals row, only per checkin, so historical points carry no known
+ * symptoms and only the current check-in's symptoms are attached to the
+ * most recent point. This under-counts pain-score trend data on real
+ * (non-fixture) history, which is a known limitation recorded in the
+ * task report rather than silently masked.
+ */
+function buildSymptomsHistory(history: VitalsReading[], latest: Symptoms): Symptoms[] {
+  return history.map((_, i) => (i === history.length - 1 ? latest : {}));
+}
+
+async function persist(args: {
+  patientId: string | undefined;
+  dayPostOp: number;
+  transcript: string;
+  symptoms: Symptoms;
+  vitals: VitalsReading;
+  decision: ReturnType<typeof composeDecision>;
+  trendFindings: ReturnType<typeof evaluateTrends>;
+  sbar: string | null;
+}): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase || !args.patientId) {
+    console.warn("[api/checkin] Supabase unavailable or demo patient not found — skipping persistence.");
+    return;
+  }
+
+  try {
+    const checkinId = await insertCheckin(supabase, {
+      patient_id: args.patientId,
+      day_post_op: args.dayPostOp,
+      transcript: args.transcript,
+      symptoms: args.symptoms,
+      vitals: args.vitals,
+      decision: args.decision,
+      trend_findings: args.trendFindings,
+      sbar: args.sbar,
+    });
+
+    if (args.decision.level !== "green") {
+      await insertEscalation(supabase, {
+        patient_id: args.patientId,
+        checkin_id: checkinId ?? null,
+        level: args.decision.level,
+        condition: args.decision.condition ?? null,
+      });
+    }
+  } catch (err) {
+    console.warn("[api/checkin] failed to persist checkin/escalation:", err);
+  }
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Malformed JSON body." }, { status: 400 });
+  }
+
+  const body = parseBody(raw);
+  if (!body) {
+    return NextResponse.json(
+      { error: "Expected { transcript: string, dayPostOp?: number }." },
+      { status: 400 },
+    );
+  }
+
+  const dayPostOp = body.dayPostOp ?? DEFAULT_DAY_POST_OP;
+  const phase = getPhase(dayPostOp);
+
+  const symptoms = await extractSymptoms(body.transcript);
+  const { patientId, patientName, procedure, vitals, ecg, history } = await loadClinicalContext();
+
+  const decision = evaluate({ dayPostOp, symptoms, vitals, ecg });
+  const trendFindings = evaluateTrends(history, buildSymptomsHistory(history, symptoms), phase);
+  const composed = composeDecision(decision, trendFindings);
+
+  let sbar: string | null = null;
+  if (composed.level !== "green") {
+    sbar = await generateSbar({
+      patient: patientName,
+      dayPostOp,
+      procedure,
+      decision: composed,
+      symptoms,
+      vitals,
+      ecg,
+      trendFindings,
+    });
+  }
+
+  await persist({
+    patientId,
+    dayPostOp,
+    transcript: body.transcript,
+    symptoms,
+    vitals,
+    decision: composed,
+    trendFindings,
+    sbar,
+  });
+
+  return NextResponse.json({ decision: composed, trendFindings, phase, sbar, symptoms, vitals, ecg });
+}
