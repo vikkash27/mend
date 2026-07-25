@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { loadCallStageProps } from "@/app/components/call/load-call-stage-props";
 import { ClinicianHub } from "@/app/components/clinician/ClinicianHub";
 import { ClinicianShell } from "@/app/components/clinician/ClinicianShell";
 import { getSupabaseClient } from "@/lib/db/supabase";
@@ -9,9 +8,9 @@ import { buildRoster } from "@/lib/sim/roster";
 /**
  * /clinician — the clinician's daily hub.
  *
- * Worklist selection, chart summary, Call now → embedded live session, and
- * Ops tools (scenario / vitals / ECG / BLE / transcript). Renders from
- * synthetic roster fixtures without credentials.
+ * Action board, needs-attention shortlist, full worklist, and Ops tools.
+ * Live check-in opens on the demo patient’s chart. Renders from synthetic
+ * roster fixtures without credentials.
  */
 
 export const dynamic = "force-dynamic";
@@ -19,14 +18,13 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Clinician hub — Mend",
   description:
-    "Post-op patients under remote monitoring: worklist, chart, and live check-in in one place.",
+    "Post-op patients under remote monitoring: action board, worklist, and live check-in.",
 };
 
 export default async function ClinicianPage() {
   const now = new Date();
   const patients = buildRoster(now);
   const persistence = getSupabaseClient() ? "Supabase" : "fixtures";
-  const callStageProps = await loadCallStageProps();
 
   return (
     <ClinicianShell active="/clinician">
@@ -39,7 +37,6 @@ export default async function ClinicianPage() {
           patients={patients}
           nowIso={now.toISOString()}
           persistence={persistence}
-          callStageProps={callStageProps}
         />
       </Suspense>
     </ClinicianShell>
