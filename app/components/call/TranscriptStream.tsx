@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { SeverityChip } from "@/components/ui/severity-chip";
+import type { Decision } from "@/lib/clinical/types";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "./use-hydrated";
 import {
@@ -13,6 +14,46 @@ import {
   type ToolStartEvent,
   type TurnEvent,
 } from "./timeline";
+
+/**
+ * Plain-language rule labels for the patient-facing transcript column.
+ * Snake_case ids stay on the red takeover / clinician audit — repeating them
+ * here reads as debug UI.
+ */
+const RULE_PLAIN: Readonly<Record<string, string>> = {
+  "pe.breathless_with_tachycardia": "suspected PE",
+  "pe.breathless_with_low_spo2": "suspected PE",
+  "pe.breathless_with_ecg_tachycardia": "suspected PE",
+  "pe.unusable_vitals_failsafe": "suspected PE",
+  "hypoxia.spo2_critical": "hypoxia",
+  "shock.hypotension": "suspected shock",
+  "dislocation.classic_triad": "suspected hip dislocation",
+  "sepsis.fever_with_tachycardia": "possible sepsis",
+  "dvt.calf_pain_or_swelling": "possible DVT",
+  "wound_infection.fever": "possible wound infection",
+  "wound_infection.discharge": "possible wound infection",
+  "afib.new_atrial_fibrillation": "new atrial fibrillation",
+  "pain.uncontrolled": "uncontrolled pain",
+  "confusion.new_onset": "new confusion",
+  "vitals.unusable_no_data": "vitals unavailable",
+  "symptoms.extraction_failed": "symptoms unclear",
+};
+
+function plainRuleLabel(ruleId: string): string {
+  return RULE_PLAIN[ruleId] ?? ruleId.replace(/[._]/g, " ");
+}
+
+/** Transcript column only — never the takeover panel. */
+function transcriptRuleLine(decision: Decision): string {
+  if (decision.firedRules.length === 0) return "no rule fired";
+  if (decision.condition === "Suspected pulmonary embolism") {
+    return "Rule: suspected PE";
+  }
+  if (decision.condition) {
+    return `Rule: ${decision.condition.toLowerCase()}`;
+  }
+  return `Rule: ${decision.firedRules.map(plainRuleLabel).join(" · ")}`;
+}
 
 /**
  * The left half of the stage view: the call as it is spoken.
@@ -79,9 +120,11 @@ function Turn({
       </p>
       {event.verbatimFrom ? (
         <p className="numeric text-meta text-ink-tertiary">
-          Spoken verbatim from{" "}
-          <span className="font-medium text-ink-secondary">{event.verbatimFrom}</span> — the
-          model wrote none of these words.
+          Spoken verbatim from the{" "}
+          <span className="font-medium text-ink-secondary">
+            {plainRuleLabel(event.verbatimFrom)}
+          </span>{" "}
+          rule — the model wrote none of these words.
         </p>
       ) : null}
     </motion.article>
@@ -109,10 +152,10 @@ function WorkingDots({ animate }: { animate: boolean }) {
 }
 
 function EngineCheck({
-  start,
   result,
   animate,
 }: {
+  /** Retained so callers keep pairing start/result; display uses clinical meta only. */
   start: ToolStartEvent;
   result: ToolResultEvent | undefined;
   animate: boolean;
@@ -134,21 +177,15 @@ function EngineCheck({
           {pending ? <WorkingDots animate={animate} /> : null}
         </p>
         <p className="numeric shrink-0 text-meta text-ink-tertiary">
-          {pending ? `${start.endpoint}` : `${start.endpoint} · ${result.latencyMs} ms`}
+          {pending ? "Safety engine" : `Safety engine · ${result.latencyMs} ms`}
         </p>
       </div>
-
-      <p className="numeric text-meta text-ink-tertiary">
-        {start.inputs.map((input) => `${input.key}: ${input.value}`).join("  ·  ")}
-      </p>
 
       {result ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-strong/60 pt-3">
           <SeverityChip level={result.decision.level} size="sm" />
           <p className="numeric text-meta text-ink-tertiary">
-            {result.decision.firedRules.length > 0
-              ? `${result.decision.firedRules.join(" · ")}`
-              : "no rule fired"}
+            {transcriptRuleLine(result.decision)}
           </p>
         </div>
       ) : null}

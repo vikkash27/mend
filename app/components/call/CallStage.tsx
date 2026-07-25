@@ -140,7 +140,9 @@ export function CallStage({
     [dayPostOp, scripted.elapsed],
   );
 
-  const realtime = useCallRealtime({
+  // Side-effect only: live rows supersede fixtures when keys exist. Status
+  // strings stay on /console — never on this judge-facing stage.
+  useCallRealtime({
     patientId: patient.id,
     onVitals: setLiveVitals,
     onCheckin,
@@ -231,19 +233,12 @@ export function CallStage({
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="flex items-center justify-end gap-2.5">
-              <PulseDot animate={animate} />
-              <span className={cn(LABEL, "text-ink-secondary")}>
-                {playing ? "On the call" : "Call in progress"}
-              </span>
-            </p>
-            <p className="numeric text-meta text-ink-tertiary">
-              {realtime === "live"
-                ? "Supabase Realtime · live"
-                : "Fixture playback · no database keys"}
-            </p>
-          </div>
+          <p className="flex items-center justify-end gap-2.5">
+            <PulseDot animate={animate} />
+            <span className={cn(LABEL, "text-ink-secondary")}>
+              {playing ? "On the call" : "Call in progress"}
+            </span>
+          </p>
           <p className="numeric text-heading leading-none font-medium text-ink">
             {formatCallClock(elapsed)}
           </p>
