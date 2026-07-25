@@ -33,12 +33,17 @@ describe("POST /api/triage", () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest({ symptoms: {} }));
       expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(typeof json.script).toBe("string");
+      expect(json.script.length).toBeGreaterThan(0);
     });
 
     it("returns 401 when the secret header is wrong", async () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest({ symptoms: {} }, { [HEADER]: "definitely-wrong" }));
       expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.script).toMatch(/care team|nurse line|911/i);
     });
 
     it("returns 401 when the secret header has the right length but wrong content", async () => {
@@ -46,6 +51,7 @@ describe("POST /api/triage", () => {
       const wrongSameLength = "x".repeat(SECRET.length);
       const res = await POST(makeRequest({ symptoms: {} }, { [HEADER]: wrongSameLength }));
       expect(res.status).toBe(401);
+      expect((await res.json()).script).toBeTruthy();
     });
 
     it("returns 401 when TRIAGE_WEBHOOK_SECRET is not configured at all (fail closed)", async () => {
@@ -53,6 +59,7 @@ describe("POST /api/triage", () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest({ symptoms: {} }, { [HEADER]: SECRET }));
       expect(res.status).toBe(401);
+      expect((await res.json()).script).toBeTruthy();
     });
 
     it("accepts the request when the header exactly matches the secret", async () => {
@@ -67,18 +74,26 @@ describe("POST /api/triage", () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest("{not valid json", { [HEADER]: SECRET }));
       expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/Malformed JSON/i);
+      expect(typeof json.script).toBe("string");
+      expect(json.script).toMatch(/care team|nurse line|911/i);
+      expect(json.script).not.toMatch(/\bNHS\b|A&E|999/);
+      expect(json.severity).toBeUndefined();
     });
 
     it("returns 400 when symptoms is missing", async () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest({}, { [HEADER]: SECRET }));
       expect(res.status).toBe(400);
+      expect((await res.json()).script).toBeTruthy();
     });
 
     it("returns 400 when symptoms is not an object", async () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest({ symptoms: "breathless" }, { [HEADER]: SECRET }));
       expect(res.status).toBe(400);
+      expect((await res.json()).script).toBeTruthy();
     });
 
     it("returns 400 when dayPostOp is not a number", async () => {
@@ -87,12 +102,43 @@ describe("POST /api/triage", () => {
         makeRequest({ symptoms: {}, dayPostOp: "four" }, { [HEADER]: SECRET }),
       );
       expect(res.status).toBe(400);
+      expect((await res.json()).script).toBeTruthy();
     });
 
     it("returns 400 for a top-level array body", async () => {
       const { POST } = await import("./route");
       const res = await POST(makeRequest([1, 2, 3], { [HEADER]: SECRET }));
       expect(res.status).toBe(400);
+      expect((await res.json()).script).toBeTruthy();
+    });
+  });
+
+  describe("error scripts are speakable and non-clinical", () => {
+    it("every 401/400 path returns the same conservative script shape", async () => {
+      const { POST } = await import("./route");
+      const cases: Array<{ status: number; req: Request }> = [
+        { status: 401, req: makeRequest({ symptoms: {} }) },
+        {
+          status: 400,
+          req: makeRequest("{not valid json", { [HEADER]: SECRET }),
+        },
+        {
+          status: 400,
+          req: makeRequest({}, { [HEADER]: SECRET }),
+        },
+      ];
+
+      const scripts: string[] = [];
+      for (const c of cases) {
+        const res = await POST(c.req);
+        expect(res.status).toBe(c.status);
+        const json = await res.json();
+        expect(typeof json.script).toBe("string");
+        expect(json.script.length).toBeGreaterThan(40);
+        expect(json.script).not.toMatch(/pulmonary embolism|dislocation|sepsis/i);
+        scripts.push(json.script);
+      }
+      expect(new Set(scripts).size).toBe(1);
     });
   });
 

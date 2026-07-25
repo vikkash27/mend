@@ -178,24 +178,37 @@ async function loadLatestReadings(): Promise<LatestReadings> {
   }
 }
 
+/**
+ * Speakable line for tool-call failures mid-phone-call. Kept deliberately
+ * non-clinical: no fabricated severity, US care-team wording only. HTTP
+ * status stays 4xx so logs/metrics still see a real failure; the agent
+ * needs `script` so it has something safe to say instead of improvising.
+ */
+const TOOL_ERROR_SCRIPT =
+  "I'm having trouble reaching the care team system right now, so I can't " +
+  "complete a clinical assessment on this call. Please contact your care " +
+  "team or nurse line today, or call 911 if you feel you are in danger or " +
+  "your symptoms are getting worse.";
+
+function errorResponse(status: 400 | 401, error: string): NextResponse {
+  return NextResponse.json({ error, script: TOOL_ERROR_SCRIPT }, { status });
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse(401, "Unauthorized");
   }
 
   let raw: unknown;
   try {
     raw = await request.json();
   } catch {
-    return NextResponse.json({ error: "Malformed JSON body." }, { status: 400 });
+    return errorResponse(400, "Malformed JSON body.");
   }
 
   const body = parseBody(raw);
   if (!body) {
-    return NextResponse.json(
-      { error: "Expected { symptoms: Symptoms, dayPostOp?: number }." },
-      { status: 400 },
-    );
+    return errorResponse(400, "Expected { symptoms: Symptoms, dayPostOp?: number }.");
   }
 
   const dayPostOp = body.dayPostOp ?? DEFAULT_DAY_POST_OP;
