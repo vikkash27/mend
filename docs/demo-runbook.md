@@ -36,7 +36,9 @@ this order.
 
 The Anthropic account needs prepaid credit; $5 covers the weekend. That one key unlocks
 symptom extraction, SBAR generation and Kardia PDF reading — the highest value per minute
-spent, so get it first.
+spent, so get it first. It is also the one key without which you cannot demonstrate a green
+outcome from a typed check-in; see "Why the transcript fallback needs the Anthropic key"
+below.
 
 For Supabase pick the London region (you're at Encode Hub) and then open the SQL Editor,
 paste in `lib/db/schema.sql`, and run it. That file seeds Margaret itself, so there's no
@@ -152,7 +154,7 @@ recognise fastest.
 
 | If this fails | Do this |
 |---|---|
-| Phone doesn't ring | Use the transcript box on `/console`. Identical pipeline — extract, evaluate, compose, SBAR — just typed instead of spoken. Say so plainly; don't pretend. |
+| Phone doesn't ring | Use the transcript box on `/console`. Identical pipeline — extract, evaluate, compose, SBAR — just typed instead of spoken. Say so plainly; don't pretend. **Requires `ANTHROPIC_API_KEY`** — see the note below. |
 | Watch won't pair | Manual vitals entry on `/console`. Validated against the same plausibility gate. |
 | Kardia extraction fails | Select the scenario on `/console`; the fixture ECG determination is used. |
 | Supabase is down | Fixture fallbacks carry the demo; the engine and every view still run. |
@@ -162,6 +164,22 @@ recognise fastest.
 **Record the backup video Saturday night, not Sunday morning.** Capture the red path end to
 end, phone audio included. The one time you'll need it is the one time there's no time to
 make it.
+
+### Why the transcript fallback needs the Anthropic key
+
+Symptom extraction fails safe. If Mend cannot understand what the patient said — no API key,
+a failed tool call, a transport error — it does **not** treat that as "she reported nothing".
+It fires an amber `symptoms.extraction_failed` finding, because an unreadable check-in is
+missing information, not reassurance.
+
+The consequence for the demo is concrete: **without `ANTHROPIC_API_KEY`, every typed
+check-in comes out amber**, including the green scenario. The engine is behaving correctly,
+but you cannot show a green outcome through the transcript box until that key is set.
+
+This is worth turning into a talking point rather than hiding. If a judge asks what happens
+when the AI fails, the answer is that it escalates instead of reassuring, and you can
+demonstrate it live by clearing the key. Very few teams can show their failure mode on
+purpose.
 
 ## Being honest with judges
 
