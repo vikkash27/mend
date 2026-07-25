@@ -40,16 +40,29 @@ function Row({
   status: VitalStatus | undefined;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line py-2.5 last:border-b-0">
-      <p className="w-32 shrink-0 text-meta text-ink-secondary">{label}</p>
-      <p className="flex w-24 shrink-0 items-baseline gap-1">
-        <span className="numeric text-xl leading-none font-medium text-ink">
-          {value}
-        </span>
-        <span className="text-meta text-ink-tertiary">{unit}</span>
-      </p>
-      {status ? <SeverityChip level={status.level} label={status.label} size="sm" /> : null}
-      <p className="numeric ml-auto text-meta text-ink-tertiary">{status?.envelope}</p>
+    <div className="grid grid-cols-[minmax(6.5rem,8rem)_minmax(0,1fr)] items-start gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0">
+      <p className="pt-1 text-meta text-ink-secondary">{label}</p>
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="flex shrink-0 items-baseline gap-1.5">
+            <span className="numeric text-xl leading-none font-medium text-ink">
+              {value}
+            </span>
+            <span className="text-meta text-ink-tertiary">{unit}</span>
+          </p>
+          {status ? (
+            <SeverityChip
+              level={status.level}
+              label={status.label}
+              size="sm"
+              className="shrink-0"
+            />
+          ) : null}
+        </div>
+        {status?.envelope ? (
+          <p className="numeric text-meta text-ink-tertiary">{status.envelope}</p>
+        ) : null}
+      </div>
     </div>
   );
 }

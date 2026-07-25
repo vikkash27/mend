@@ -299,7 +299,7 @@ export function PatientChart({
             <div
               role="tablist"
               aria-label="Patient chart sections"
-              className="flex flex-wrap gap-1 border-b border-line"
+              className="flex flex-wrap gap-2"
             >
               {CHART_TABS.map((tab) => {
                 const current = tab.id === activeTab;
@@ -312,10 +312,11 @@ export function PatientChart({
                     aria-selected={current}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "inline-flex min-h-11 items-center border-b-2 px-3 text-label transition-colors",
+                      "inline-flex min-h-10 items-center justify-center rounded-full px-4 text-label transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ink/25",
                       current
-                        ? "border-ink font-medium text-ink"
-                        : "border-transparent text-ink-secondary hover:text-ink",
+                        ? "bg-ink font-medium text-paper"
+                        : "bg-wash text-ink-secondary hover:bg-line/60 hover:text-ink",
                     )}
                   >
                     {tab.label}
@@ -324,14 +325,13 @@ export function PatientChart({
               })}
             </div>
 
-            <div role="tabpanel" className="space-y-6 pt-2">
+            <div role="tabpanel" className="space-y-4 pt-3">
               {activeTab === "overview" ? (
-                <div className="space-y-5">
-                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+                <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+                  <div className="space-y-4">
                     <SeverityPanel
                       level={latest.decision.level}
                       headline={latest.decision.condition ?? undefined}
-                      className="self-start"
                     >
                       <p className="font-serif text-lede leading-snug text-ink-secondary">
                         {latest.decision.action}
@@ -343,98 +343,98 @@ export function PatientChart({
                       </p>
                     </SeverityPanel>
 
-                    <Panel className="self-start p-5">
-                      <SectionHeading
-                        title="Latest reading"
-                        meta={`day ${latest.dayPostOp} · ${patient.phase.name}`}
-                      />
-                      <div className="pt-3">
-                        <LatestReading
-                          vitals={latest.vitals}
-                          ecg={latest.ecg}
-                          phase={patient.phase}
-                          painScore={latest.symptoms.painScore}
-                          callSeconds={latest.callSeconds}
+                    <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
+                      <Panel className="space-y-3 p-5 md:col-span-3 xl:col-span-1">
+                        <SectionHeading
+                          title="Envelope in force"
+                          meta={patient.phase.name}
                         />
-                      </div>
-                    </Panel>
+                        <dl className="space-y-1.5">
+                          {[
+                            ["Heart rate", `≤ ${envelope.hrMax} bpm`],
+                            ["Oxygen saturation", `≥ ${envelope.spo2Min}%`],
+                            ["Temperature", `≤ ${envelope.tempCMax.toFixed(1)} °C`],
+                            [
+                              "Tachycardia threshold",
+                              `> ${envelope.hrMax + 10} bpm (hrMax + 10)`,
+                            ],
+                            [
+                              "PE oxygen floor",
+                              `< ${envelope.spo2Min - 2}% (spo2Min − 2)`,
+                            ],
+                            [
+                              "Phase days",
+                              `${patient.phase.dayStart}–${patient.phase.dayEnd}`,
+                            ],
+                          ].map(([term, value]) => (
+                            <div
+                              key={term}
+                              className="flex items-baseline justify-between gap-3 border-b border-line py-1 last:border-b-0"
+                            >
+                              <dt className="text-meta text-ink-secondary">{term}</dt>
+                              <dd className="numeric text-meta font-medium text-ink">
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                        <p className="text-meta text-ink-tertiary">
+                          <span className="uppercase tracking-[0.14em]">Source</span>{" "}
+                          <span className="italic">{envelope.source}</span>
+                        </p>
+                      </Panel>
+
+                      <Panel className="space-y-3 p-5">
+                        <SectionHeading
+                          title="Rehab this phase"
+                          meta={patient.phase.weightBearing}
+                        />
+                        <ul className="space-y-1.5">
+                          {patient.phase.rehab.map((item) => (
+                            <li
+                              key={item}
+                              className="border-b border-line py-1 text-label text-ink-secondary last:border-b-0"
+                            >
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </Panel>
+
+                      <Panel className="space-y-3 p-5">
+                        <SectionHeading
+                          title="Precautions"
+                          meta="reinforced on every call"
+                        />
+                        <ul className="space-y-1.5">
+                          {patient.phase.precautions.map((item) => (
+                            <li
+                              key={item}
+                              className="border-b border-line py-1 text-label text-ink-secondary last:border-b-0"
+                            >
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </Panel>
+                    </div>
                   </div>
 
-                  <div className="grid gap-5 lg:grid-cols-3">
-                    <Panel className="space-y-3 p-5">
-                      <SectionHeading
-                        title="Envelope in force"
-                        meta={patient.phase.name}
+                  <Panel className="p-5 xl:sticky xl:top-20">
+                    <SectionHeading
+                      title="Latest reading"
+                      meta={`day ${latest.dayPostOp} · ${patient.phase.name}`}
+                    />
+                    <div className="pt-3">
+                      <LatestReading
+                        vitals={latest.vitals}
+                        ecg={latest.ecg}
+                        phase={patient.phase}
+                        painScore={latest.symptoms.painScore}
+                        callSeconds={latest.callSeconds}
                       />
-                      <dl className="space-y-1.5">
-                        {[
-                          ["Heart rate", `≤ ${envelope.hrMax} bpm`],
-                          ["Oxygen saturation", `≥ ${envelope.spo2Min}%`],
-                          ["Temperature", `≤ ${envelope.tempCMax.toFixed(1)} °C`],
-                          [
-                            "Tachycardia threshold",
-                            `> ${envelope.hrMax + 10} bpm (hrMax + 10)`,
-                          ],
-                          [
-                            "PE oxygen floor",
-                            `< ${envelope.spo2Min - 2}% (spo2Min − 2)`,
-                          ],
-                          [
-                            "Phase days",
-                            `${patient.phase.dayStart}–${patient.phase.dayEnd}`,
-                          ],
-                        ].map(([term, value]) => (
-                          <div
-                            key={term}
-                            className="flex items-baseline justify-between gap-3 border-b border-line py-1 last:border-b-0"
-                          >
-                            <dt className="text-meta text-ink-secondary">{term}</dt>
-                            <dd className="numeric text-meta font-medium text-ink">
-                              {value}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      <p className="text-meta text-ink-tertiary">
-                        <span className="uppercase tracking-[0.14em]">Source</span>{" "}
-                        <span className="italic">{envelope.source}</span>
-                      </p>
-                    </Panel>
-
-                    <Panel className="space-y-3 p-5">
-                      <SectionHeading
-                        title="Rehab this phase"
-                        meta={patient.phase.weightBearing}
-                      />
-                      <ul className="space-y-1.5">
-                        {patient.phase.rehab.map((item) => (
-                          <li
-                            key={item}
-                            className="border-b border-line py-1 text-label text-ink-secondary last:border-b-0"
-                          >
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </Panel>
-
-                    <Panel className="space-y-3 p-5">
-                      <SectionHeading
-                        title="Precautions"
-                        meta="reinforced on every call"
-                      />
-                      <ul className="space-y-1.5">
-                        {patient.phase.precautions.map((item) => (
-                          <li
-                            key={item}
-                            className="border-b border-line py-1 text-label text-ink-secondary last:border-b-0"
-                          >
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </Panel>
-                  </div>
+                    </div>
+                  </Panel>
                 </div>
               ) : null}
 
