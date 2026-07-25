@@ -7,6 +7,7 @@ import { buildSymptomsHistory } from "@/lib/clinical/symptoms-history";
 import { evaluateTrends } from "@/lib/clinical/trends";
 import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
 import { buildCheckinVitalsInsert } from "@/lib/db/build-checkin-vitals-insert";
+import { planEscalationAfterCheckin } from "@/lib/db/escalation-audit";
 import {
   fetchDemoPatient,
   fetchLatestEcg,
@@ -15,6 +16,7 @@ import {
   insertCheckin,
   insertEscalation,
   insertVitals,
+  linkEscalationCheckin,
 } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
@@ -135,32 +137,32 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
  * null" — that invites a duplicate text or a clinician concluding the
  * family was never contacted.
  */
+/** Returns the early SMS audit row id when the durable insert succeeds. */
 async function recordCaregiverNotified(args: {
   patientId: string | undefined;
   level: Exclude<ReturnType<typeof composeDecision>["level"], "green">;
   condition: string | null;
   notifiedAt: string;
-}): Promise<boolean> {
+}): Promise<string | undefined> {
   const supabase = getSupabaseClient();
   if (!supabase || !args.patientId) {
     console.warn(
       "[api/checkin] cannot durable-record caregiver notification — Supabase unavailable or demo patient not found.",
     );
-    return false;
+    return undefined;
   }
 
   try {
-    await insertEscalation(supabase, {
+    return await insertEscalation(supabase, {
       patient_id: args.patientId,
       checkin_id: null,
       level: args.level,
       condition: args.condition,
       notified_caregiver_at: args.notifiedAt,
     });
-    return true;
   } catch (err) {
     console.warn("[api/checkin] failed to durable-record caregiver notification:", err);
-    return false;
+    return undefined;
   }
 }
 
@@ -177,9 +179,9 @@ async function persist(args: {
    * check-in, so `escalations.notified_caregiver_at` can distinguish a
    * first send from a later resend. */
   notifiedCaregiverAt: string | null;
-  /** When true, the SMS audit row was already written; skip a second
-   * escalation insert so we do not double-count the notification. */
-  notificationAlreadyRecorded: boolean;
+  /** Id of the early SMS audit row when the durable insert succeeded;
+   * undefined means persist should fall back to a full escalation insert. */
+  earlyEscalationId: string | undefined;
 }): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase || !args.patientId) {
@@ -221,7 +223,20 @@ async function persist(args: {
   }
 
   // Escalation audit is independent of the vitals/checkin write above.
-  if (args.decision.level !== "green" && !args.notificationAlreadyRecorded) {
+  const plan = planEscalationAfterCheckin({
+    level: args.decision.level,
+    earlyEscalationId: args.earlyEscalationId,
+    checkinId,
+  });
+
+  if (plan.kind === "link") {
+    try {
+      await linkEscalationCheckin(supabase, plan.escalationId, plan.checkinId);
+    } catch (err) {
+      // Never suppress a successful SMS because link-back failed.
+      console.warn("[api/checkin] failed to link escalation to checkin:", err);
+    }
+  } else if (plan.kind === "insert_fallback") {
     try {
       await insertEscalation(supabase, {
         patient_id: args.patientId,
@@ -295,14 +310,14 @@ export async function POST(request: Request): Promise<NextResponse> {
   // destination number is configured (patient.caregiverPhone or the
   // DEMO_CAREGIVER_PHONE fallback inside notifyCaregiver itself).
   let notifiedCaregiverAt: string | null = null;
-  let notificationAlreadyRecorded = false;
+  let earlyEscalationId: string | undefined;
   if (composed.level !== "green" && sbar !== null) {
     const notifyResult = await notifyCaregiver({ name: patientName, caregiverPhone }, composed, sbar);
     if (notifyResult.status === "sent") {
       notifiedCaregiverAt = new Date().toISOString();
       // Durable BEFORE vitals/checkin writes — never suppress the SMS if
       // this audit insert fails; just try again inside persist.
-      notificationAlreadyRecorded = await recordCaregiverNotified({
+      earlyEscalationId = await recordCaregiverNotified({
         patientId,
         level: composed.level,
         condition: composed.condition ?? null,
@@ -323,7 +338,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     trendFindings,
     sbar,
     notifiedCaregiverAt,
-    notificationAlreadyRecorded,
+    earlyEscalationId,
   });
 
   return NextResponse.json({
