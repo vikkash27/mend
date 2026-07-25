@@ -151,6 +151,15 @@ loss is poor quality by definition, and the fail-safe rule says poor quality mea
 Supabase `demo_state`, but those two pages still use the sync getter, so they can lag across
 serverless isolates. Fixture-mode demos on Vercel may show a green narrative under a red call.
 
+**`?state=attention` on `/family` resolves to the drift scenario, not PE**
+(`lib/sim/resolve-demo.ts:30`). The intended stage path is safe — select PE on `/console`, then
+open `/family` with no query string, and it follows the store. But the deep link is a trap in two
+ways: a driver who types it during the PE cut shows amber heart-rate creep instead of the
+embolism, breaking the "one engine, three audiences, same event" story mid-demo; and the visual
+harness screenshots that URL, so anyone reviewing `.visual/family-state-attention--*.png`
+believes they are looking at the PE family view and are not. Consider adding an explicit
+`?state=urgent` that maps to the PE fixture, and never use `attention` for the PE cut.
+
 ### P2 — credibility polish, only if P0 and P1 are done
 
 - **°C vs °F.** US clinicians read °F for home monitoring; `LiveVitals.tsx` and the console show
