@@ -37,6 +37,7 @@ import {
   TREND_WINDOW_DAYS,
   buildTrendSeries,
 } from "./trend-series";
+import { VoiceBiomarkersPanel } from "./VoiceBiomarkersPanel";
 
 type CallActionState =
   | { kind: "idle" }
@@ -420,21 +421,28 @@ export function PatientChart({
                     </div>
                   </div>
 
-                  <Panel className="p-5 xl:sticky xl:top-20">
-                    <SectionHeading
-                      title="Latest reading"
-                      meta={`day ${latest.dayPostOp} · ${patient.phase.name}`}
-                    />
-                    <div className="pt-3">
-                      <LatestReading
-                        vitals={latest.vitals}
-                        ecg={latest.ecg}
-                        phase={patient.phase}
-                        painScore={latest.symptoms.painScore}
-                        callSeconds={latest.callSeconds}
+                  <div className="space-y-4 xl:sticky xl:top-20">
+                    <Panel className="p-5">
+                      <SectionHeading
+                        title="Latest reading"
+                        meta={`day ${latest.dayPostOp} · ${patient.phase.name}`}
                       />
-                    </div>
-                  </Panel>
+                      <div className="pt-3">
+                        <LatestReading
+                          vitals={latest.vitals}
+                          ecg={latest.ecg}
+                          phase={patient.phase}
+                          painScore={latest.symptoms.painScore}
+                          callSeconds={latest.callSeconds}
+                        />
+                      </div>
+                    </Panel>
+                    {latest.voiceBiomarkers ? (
+                      <Panel className="p-5">
+                        <VoiceBiomarkersPanel record={latest.voiceBiomarkers} />
+                      </Panel>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 

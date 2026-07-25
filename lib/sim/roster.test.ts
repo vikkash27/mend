@@ -52,11 +52,17 @@ describe("every verdict is the engine's, not authored copy", () => {
 
       patient.checkins.forEach((checkin, index) => {
         const phase = getPhase(checkin.dayPostOp);
+        const voiceForEngine =
+          checkin.voiceBiomarkers?.status === "ready" &&
+          checkin.voiceBiomarkers.mapped?.quality === "ok"
+            ? checkin.voiceBiomarkers.mapped
+            : undefined;
         const base = evaluate({
           dayPostOp: checkin.dayPostOp,
           symptoms: checkin.symptoms,
           vitals: checkin.vitals,
           ecg: checkin.ecg,
+          voiceBiomarkers: voiceForEngine,
         });
         const trends = evaluateTrends(
           vitals.slice(0, index + 1),
@@ -86,6 +92,8 @@ describe("the four clinical stories the worklist has to tell", () => {
     expect(margaret.latest.decision.condition).toBe("Suspected pulmonary embolism");
     expect(margaret.latest.decision.firedRules).toEqual(["pe.breathless_with_tachycardia"]);
     expect(margaret.latest.vitals.hr).toBe(122);
+    expect(margaret.latest.voiceBiomarkers?.status).toBe("ready");
+    expect(margaret.latest.voiceBiomarkers?.mapped?.respiratory.level).toBe("high");
   });
 
   it("Doris is the slow infection: amber on a threshold her own earlier days cleared", () => {

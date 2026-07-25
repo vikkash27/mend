@@ -1,3 +1,4 @@
+import type { VoiceBiomarkersRecord } from "../amplifier/types";
 import { composeDecision } from "../clinical/compose";
 import { getPhase } from "../clinical/recovery-graph";
 import { evaluate } from "../clinical/red-flag-engine";
@@ -60,6 +61,8 @@ interface DayProfile {
   /** Set when a clinician has already dealt with this one. */
   acknowledgedBy?: string;
   callSeconds: number;
+  /** Optional Amplifier voice biomarker snapshot for clinician chart demos. */
+  voiceBiomarkers?: VoiceBiomarkersRecord;
 }
 
 interface PatientProfile {
@@ -91,6 +94,8 @@ export interface CheckinRecord {
   callSeconds: number;
   managementMinutes: number;
   acknowledgedBy?: string;
+  /** Present when a voice call ran Amplifier analysis (or is pending/failed). */
+  voiceBiomarkers?: VoiceBiomarkersRecord;
 }
 
 export interface RosterPatient {
@@ -167,6 +172,21 @@ const PROFILES: PatientProfile[] = [
         scenario: "pe",
         ecg: "tachycardia",
         callSeconds: 79,
+        // Demo chart: ready voice biomarkers on the acute check-in. PE red still
+        // wins severity; the panel shows respiratory/cognitive from the call.
+        voiceBiomarkers: {
+          status: "ready",
+          conversationId: "conv-margaret-day-4",
+          jobIds: ["job-resp-demo", "job-cog-demo"],
+          analyzedAt: "2026-07-25T11:26:00.000Z",
+          mapped: {
+            quality: "ok",
+            respiratory: { level: "high", score: 0.86, label: "Elevated respiratory effort" },
+            cognitive: { level: "low", score: 0.22 },
+            overallLevel: "high",
+            source: "amplifier",
+          },
+        },
       },
     ],
   },
@@ -591,11 +611,17 @@ function buildPatient(profile: PatientProfile, now: number): RosterPatient {
     symptomsSeries.push(entry.symptoms);
 
     const phase = getPhase(entry.day);
+    const voiceForEngine =
+      entry.voiceBiomarkers?.status === "ready" &&
+      entry.voiceBiomarkers.mapped?.quality === "ok"
+        ? entry.voiceBiomarkers.mapped
+        : undefined;
     const baseDecision = evaluate({
       dayPostOp: entry.day,
       symptoms: entry.symptoms,
       vitals,
       ecg,
+      voiceBiomarkers: voiceForEngine,
     });
     const trendFindings = evaluateTrends([...vitalsSeries], [...symptomsSeries], phase);
     const decision = composeDecision(baseDecision, trendFindings);
@@ -625,6 +651,9 @@ function buildPatient(profile: PatientProfile, now: number): RosterPatient {
       callSeconds: entry.callSeconds,
       managementMinutes: MANAGEMENT_MINUTES[decision.level],
       acknowledgedBy: entry.acknowledgedBy,
+      ...(entry.voiceBiomarkers
+        ? { voiceBiomarkers: entry.voiceBiomarkers }
+        : {}),
     });
   }
 
