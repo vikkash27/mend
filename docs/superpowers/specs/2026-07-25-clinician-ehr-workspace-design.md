@@ -82,7 +82,7 @@ Remove the current side-by-side “chart summary” pane from the hub. Digging i
 
 ## 4. Visual chrome (EHR densification)
 
-Stay on Mend design tokens (paper/ink, severity via `lib/ui/severity.ts`, Inter for machine data). Do **not** invent a second colour system or fake hospital logos.
+Stay on Mend design tokens (paper/ink, severity via `lib/ui/severity.ts`, IBM Plex Sans for machine data / IBM Plex Serif for human voice). Do **not** invent a second colour system or fake hospital logos.
 
 Changes vs current “marketing-dense” hub:
 - Stronger sticky **app bar**: logo + Clinician + clinic name + nav; meta (date / data source) right; less lede copy on hub

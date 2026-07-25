@@ -105,7 +105,7 @@ function Specimen({
   className: string;
   name: string;
   size: string;
-  face: "Instrument Serif" | "Inter";
+  face: "IBM Plex Serif" | "IBM Plex Sans";
 }) {
   return (
     <div className="grid gap-2 border-b border-line pb-7 last:border-b-0 last:pb-0 md:grid-cols-[1fr_10rem] md:items-baseline md:gap-10">
@@ -255,13 +255,13 @@ export default function StyleguidePage() {
         title="Type scale"
         blurb="Ask of any string: is this language, or is this measurement? Language takes the serif. Measurement takes the sans, in tabular figures."
       >
-        <Subsection title="Instrument Serif — what Mend says">
+        <Subsection title="IBM Plex Serif — what Mend says">
           <div className="space-y-7">
             <Specimen
               className="font-heading text-display"
               name="display"
               size="64px"
-              face="Instrument Serif"
+              face="IBM Plex Serif"
             >
               You&apos;re on track
             </Specimen>
@@ -269,7 +269,7 @@ export default function StyleguidePage() {
               className="font-heading text-title"
               name="title"
               size="44px"
-              face="Instrument Serif"
+              face="IBM Plex Serif"
             >
               Day 3 after your hip replacement
             </Specimen>
@@ -277,7 +277,7 @@ export default function StyleguidePage() {
               className="font-heading text-heading"
               name="heading"
               size="32px"
-              face="Instrument Serif"
+              face="IBM Plex Serif"
             >
               What Mend asked this morning
             </Specimen>
@@ -285,7 +285,7 @@ export default function StyleguidePage() {
               className="font-heading text-subhead"
               name="subhead"
               size="24px"
-              face="Instrument Serif"
+              face="IBM Plex Serif"
             >
               Situation, background, assessment, recommendation
             </Specimen>
@@ -293,7 +293,7 @@ export default function StyleguidePage() {
               className="font-serif text-lede"
               name="lede"
               size="21px"
-              face="Instrument Serif"
+              face="IBM Plex Serif"
             >
               &ldquo;Good morning, Margaret. Yesterday you told me the pain was a
               four out of ten. How is it this morning?&rdquo;
@@ -301,13 +301,13 @@ export default function StyleguidePage() {
           </div>
         </Subsection>
 
-        <Subsection title="Inter — what the engine measures">
+        <Subsection title="IBM Plex Sans — what the engine measures">
           <div className="space-y-7">
             <Specimen
               className="numeric text-vital font-medium"
               name="vital"
               size="44px"
-              face="Inter"
+              face="IBM Plex Sans"
             >
               122 <span className="text-label text-ink-tertiary">bpm</span>
             </Specimen>
@@ -315,12 +315,17 @@ export default function StyleguidePage() {
               className="text-body-lg"
               name="body-lg"
               size="19px"
-              face="Inter"
+              face="IBM Plex Sans"
             >
               Family view body copy sits at nineteen pixels, because the person
               reading it is often worried and often not wearing their glasses.
             </Specimen>
-            <Specimen className="text-body" name="body" size="17px" face="Inter">
+            <Specimen
+              className="text-body"
+              name="body"
+              size="17px"
+              face="IBM Plex Sans"
+            >
               Product body copy sits at seventeen pixels with a 1.6 line height.
               Nothing in Mend renders body text below this size.
             </Specimen>
@@ -328,7 +333,7 @@ export default function StyleguidePage() {
               className="text-label font-medium"
               name="label"
               size="15px"
-              face="Inter"
+              face="IBM Plex Sans"
             >
               Captured from KardiaMobile 6L
             </Specimen>
@@ -336,11 +341,16 @@ export default function StyleguidePage() {
               className="numeric text-meta text-ink-secondary"
               name="meta"
               size="13px"
-              face="Inter"
+              face="IBM Plex Sans"
             >
               2026-07-25 09:12 · RED-PE-01 · 122 bpm · 93% · 38.4 °C
             </Specimen>
-            <Specimen className="eyebrow" name="eyebrow" size="13px" face="Inter">
+            <Specimen
+              className="eyebrow"
+              name="eyebrow"
+              size="13px"
+              face="IBM Plex Sans"
+            >
               Deterministic core
             </Specimen>
           </div>

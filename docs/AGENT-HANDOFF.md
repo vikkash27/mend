@@ -66,7 +66,7 @@ From the plan's Global Constraints. Reviewers have already caught violations of 
    calls are logged in `docs/clinical-decisions.md`.
 8. TypeScript strict. No `any` in `lib/clinical/**`.
 
-**Design system:** serif (Instrument Serif) for human voice, sans (Inter) for machine data,
+**Design system:** serif (IBM Plex Serif) for human voice, sans (IBM Plex Sans) for machine data,
 tabular-nums on figures; "grayscale until it matters" with colour reserved for severity;
 `lib/ui/severity.ts` is the single source of truth; severity never conveyed by colour alone;
 WCAG AA; 44px touch targets; family surface minimum 19px and never any rule ids or jargon.
