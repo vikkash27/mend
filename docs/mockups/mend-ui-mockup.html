@@ -1,0 +1,567 @@
+<title>Mend — post-discharge recovery co-pilot</title>
+<style>
+  :root {
+    --bg: #EEF1F5;
+    --surface: #FFFFFF;
+    --surface-2: #F4F6F9;
+    --line: #DBE1E9;
+    --line-strong: #C7D0DB;
+    --ink: #171B21;
+    --muted: #59636F;
+    --faint: #8B95A2;
+    --brand: #2F6F9F;
+    --brand-deep: #235A83;
+    --brand-soft: #E7F0F6;
+
+    --ok: #2E8B63;      --ok-soft: #E3F0E9;   --ok-line: #B9DCC8;
+    --warn: #B67716;    --warn-soft: #F7ECD7; --warn-line: #E8CE9A;
+    --crit: #C4382F;    --crit-soft: #F8E2E0; --crit-line: #EEBAB4;
+
+    --mono: "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(20,30,45,.04), 0 8px 24px -12px rgba(20,30,45,.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D1116;
+      --surface: #161C23;
+      --surface-2: #1C242D;
+      --line: #29323C;
+      --line-strong: #38444F;
+      --ink: #E9EEF4;
+      --muted: #9BA7B4;
+      --faint: #6E7A88;
+      --brand: #5CA0D4;
+      --brand-deep: #7FB6E0;
+      --brand-soft: #16303f;
+
+      --ok: #55B98A;   --ok-soft: #13291F;   --ok-line: #235F44;
+      --warn: #D79B3E; --warn-soft: #2C2312; --warn-line: #6B5220;
+      --crit: #E5665C; --crit-soft: #33191A; --crit-line: #6E332E;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #EEF1F5; --surface: #FFFFFF; --surface-2: #F4F6F9; --line: #DBE1E9; --line-strong: #C7D0DB;
+    --ink: #171B21; --muted: #59636F; --faint: #8B95A2;
+    --brand: #2F6F9F; --brand-deep: #235A83; --brand-soft: #E7F0F6;
+    --ok: #2E8B63; --ok-soft: #E3F0E9; --ok-line: #B9DCC8;
+    --warn: #B67716; --warn-soft: #F7ECD7; --warn-line: #E8CE9A;
+    --crit: #C4382F; --crit-soft: #F8E2E0; --crit-line: #EEBAB4;
+    --shadow: 0 1px 2px rgba(20,30,45,.04), 0 8px 24px -12px rgba(20,30,45,.14);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1116; --surface: #161C23; --surface-2: #1C242D; --line: #29323C; --line-strong: #38444F;
+    --ink: #E9EEF4; --muted: #9BA7B4; --faint: #6E7A88;
+    --brand: #5CA0D4; --brand-deep: #7FB6E0; --brand-soft: #16303f;
+    --ok: #55B98A; --ok-soft: #13291F; --ok-line: #235F44;
+    --warn: #D79B3E; --warn-soft: #2C2312; --warn-line: #6B5220;
+    --crit: #E5665C; --crit-soft: #33191A; --crit-line: #6E332E;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: clamp(16px, 3vw, 34px);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 1180px; margin: 0 auto; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    padding-bottom: 18px; margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 9px; flex: none;
+    background: var(--brand); color: #fff;
+    display: grid; place-items: center;
+  }
+  .mark svg { width: 21px; height: 21px; display: block; }
+  .brand h1 { font-size: 20px; margin: 0; letter-spacing: -0.02em; font-weight: 650; }
+  .brand .tag { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .spacer { flex: 1 1 40px; }
+
+  .patient {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 8px 13px 8px 9px; box-shadow: var(--shadow);
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    background: var(--brand-soft); color: var(--brand-deep);
+    display: grid; place-items: center; font-weight: 650; font-size: 14px;
+  }
+  .patient .who { font-weight: 600; font-size: 14px; }
+  .patient .meta { font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: -0.01em; }
+
+  .theme-btn {
+    font-family: var(--sans); font-size: 13px; cursor: pointer;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 13px; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .theme-btn:hover { border-color: var(--line-strong); }
+
+  /* ---------- disclaimer ---------- */
+  .disclaimer {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12.5px; color: var(--muted);
+    background: var(--surface-2); border: 1px dashed var(--line-strong);
+    border-radius: 10px; padding: 9px 13px; margin-bottom: 20px;
+  }
+  .disclaimer b { color: var(--ink); font-weight: 600; }
+  .disclaimer svg { width: 16px; height: 16px; flex: none; color: var(--warn); }
+
+  /* ---------- scenario toggle ---------- */
+  .scenario {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .scenario .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 4px; gap: 4px; }
+  .seg button {
+    font-family: var(--sans); font-size: 13px; cursor: pointer;
+    border: 1px solid transparent; background: transparent; color: var(--muted);
+    padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 500;
+  }
+  .seg button .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; }
+  .seg button[aria-pressed="true"] {
+    background: var(--surface); color: var(--ink); border-color: var(--line-strong);
+    box-shadow: 0 1px 2px rgba(20,30,45,.06); font-weight: 600;
+  }
+  .seg button.s-ok[aria-pressed="true"] { color: var(--ok); }
+  .seg button.s-crit[aria-pressed="true"] { color: var(--crit); }
+  .seg button[aria-pressed="true"] .dot { opacity: 1; }
+
+  /* ---------- layout ---------- */
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card-h { display: flex; align-items: center; gap: 9px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+  .card-h .k { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); font-weight: 650; }
+  .card-h .live { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .pulsedot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: ring 2.2s ease-out infinite; }
+  @keyframes ring { 0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent);} 70%{box-shadow:0 0 0 7px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+
+  /* ---------- voice column ---------- */
+  .voicehead { padding: 16px 17px 4px; }
+  .voicehead .when { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .voicehead .title { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .eq { display: flex; align-items: flex-end; gap: 3px; height: 34px; padding: 12px 17px 6px; }
+  .eq span { flex: 1; background: var(--brand); border-radius: 2px; opacity: .85; animation: bob 1s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ height: 20%; } 50%{ height: 90%; } }
+  @media (prefers-reduced-motion: reduce) { .eq span { animation: none; height: 45%; } .pulsedot { animation: none; } }
+
+  .transcript { padding: 6px 17px 4px; display: flex; flex-direction: column; gap: 11px; }
+  .bubble { max-width: 88%; font-size: 13.5px; padding: 10px 13px; border-radius: 13px; line-height: 1.45; }
+  .bubble.agent { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bubble.pt { align-self: flex-end; background: var(--brand-soft); color: var(--brand-deep); border-bottom-right-radius: 4px; }
+  .bubble .spk { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); margin-bottom: 3px; font-weight: 600; }
+  .bubble.pt .spk { color: var(--brand); }
+
+  .extract { padding: 14px 17px 18px; border-top: 1px solid var(--line); margin-top: 8px; }
+  .extract .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 650; display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+  .extract .lbl .ai { font-family: var(--mono); font-size: 10px; background: var(--brand-soft); color: var(--brand-deep); padding: 2px 6px; border-radius: 5px; letter-spacing: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip { font-size: 12.5px; padding: 6px 11px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface-2); display: flex; align-items: center; gap: 6px; }
+  .chip .cd { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .chip.flag { border-color: var(--crit-line); background: var(--crit-soft); color: var(--crit); }
+  .chip.flag .cd { background: var(--crit); }
+  .chip.calm .cd { background: var(--ok); }
+
+  /* ---------- vitals ---------- */
+  .vitals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 620px) { .vitals { grid-template-columns: repeat(2, 1fr); } }
+  .vital { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 13px 14px; position: relative; overflow: hidden; }
+  .vital::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gd, var(--line-strong)); }
+  .vital .vk { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); font-weight: 650; display: flex; align-items: center; justify-content: space-between; }
+  .vital .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 27px; font-weight: 600; letter-spacing: -0.02em; margin-top: 6px; line-height: 1; }
+  .vital .num small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+  .vital .sub { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 7px; }
+  .trace { width: 100%; height: 34px; display: block; margin-top: 8px; }
+  .pill { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 20px; letter-spacing: .02em; font-weight: 600; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); color: var(--crit); }
+  .vital.ok { --gd: var(--ok); }
+  .vital.warn { --gd: var(--warn); }
+  .vital.crit { --gd: var(--crit); }
+
+  /* ---------- escalation ---------- */
+  .esc { border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--line); overflow: hidden; margin-bottom: 20px; }
+  .esc-top { display: flex; gap: 15px; padding: 18px 20px; align-items: flex-start; }
+  .esc-badge { flex: none; width: 62px; text-align: center; }
+  .esc-badge .ring { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; border: 2px solid; }
+  .esc-badge .ring svg { width: 26px; height: 26px; }
+  .esc-badge .lvl { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; margin-top: 7px; font-weight: 700; }
+  .esc-body { flex: 1; }
+  .esc-body .head { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+  .esc-body .action { font-size: 14px; margin-top: 5px; }
+  .esc-body .action b { font-weight: 650; }
+  .esc.ok { background: var(--ok-soft); border-color: var(--ok-line); }
+  .esc.ok .ring { border-color: var(--ok); color: var(--ok); background: var(--surface); }
+  .esc.ok .lvl { color: var(--ok); }
+  .esc.crit { background: var(--crit-soft); border-color: var(--crit-line); }
+  .esc.crit .ring { border-color: var(--crit); color: var(--crit); background: var(--surface); }
+  .esc.crit .lvl { color: var(--crit); }
+
+  .why { background: var(--surface); border-top: 1px solid var(--line); padding: 15px 20px; }
+  .why .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 650; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .why .lbl .engine { font-family: var(--mono); font-size: 10px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); padding: 2px 6px; border-radius: 5px; letter-spacing: 0; }
+  .why ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .why li { display: flex; gap: 10px; font-size: 13.5px; align-items: flex-start; }
+  .why li .mk { flex: none; margin-top: 2px; width: 15px; height: 15px; }
+  .why li code { font-family: var(--mono); font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+
+  /* ---------- SBAR ---------- */
+  .sbar-h { display: flex; align-items: center; gap: 9px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+  .sbar-h .k { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); font-weight: 650; }
+  .sbar-h .gen { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .sbar-body { padding: 4px 17px 16px; }
+  .sbar-row { display: grid; grid-template-columns: 20px 1fr; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .sbar-row:last-child { border-bottom: none; }
+  .sbar-row .letter { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--brand); }
+  .sbar-row .txt { font-size: 13.5px; line-height: 1.55; }
+  .sbar-row .txt b { font-weight: 650; }
+  .sbar-empty { padding: 22px 17px; text-align: center; color: var(--muted); font-size: 13.5px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .sbar-empty svg { width: 26px; height: 26px; color: var(--ok); }
+
+  /* ---------- footer ---------- */
+  .foot { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 18px 30px; align-items: flex-start; }
+  .foot .col { flex: 1 1 240px; }
+  .foot .col h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 650; }
+  .foot .col p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .foot code { font-family: var(--mono); font-size: 11.5px; color: var(--brand-deep); }
+
+  .fade { animation: fade .35s ease; }
+  @keyframes fade { from { opacity: .35; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+
+<div class="wrap">
+  <div class="shell">
+
+    <!-- top bar -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-6 4 12 2.5-8 1.5 2h6"/></svg>
+        </div>
+        <div>
+          <h1>Mend</h1>
+          <div class="tag">Post-discharge orthopaedic recovery co-pilot</div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="patient">
+        <div class="avatar">MW</div>
+        <div>
+          <div class="who">Margaret W.</div>
+          <div class="meta" id="pt-meta">82 F · R hip hemiarthroplasty · POD 9 · day 6 at home</div>
+        </div>
+      </div>
+      <button class="theme-btn" id="theme" aria-label="Toggle colour theme">
+        <svg id="theme-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <span id="theme-txt">Dark</span>
+      </button>
+    </div>
+
+    <!-- disclaimer -->
+    <div class="disclaimer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <span><b>Educational prototype — not medical advice.</b> All data synthetic. Escalation guidance routes to a clinician; it does not diagnose. Demo uses simulated device vitals in place of live Bluetooth peripherals.</span>
+    </div>
+
+    <!-- scenario toggle -->
+    <div class="scenario">
+      <span class="lbl">Check-in scenario</span>
+      <div class="seg" role="group" aria-label="Choose demo scenario">
+        <button class="s-ok" id="btn-ok" aria-pressed="false" onclick="setScenario('ok')"><span class="dot"></span>Day 1 home · stable</button>
+        <button class="s-crit" id="btn-crit" aria-pressed="true" onclick="setScenario('crit')"><span class="dot"></span>Day 6 home · escalation</button>
+      </div>
+      <span class="lbl" style="text-transform:none;letter-spacing:0;color:var(--muted);font-weight:500" id="scenario-note"></span>
+    </div>
+
+    <!-- main grid -->
+    <div class="grid">
+
+      <!-- LEFT: voice check-in -->
+      <div class="card" aria-label="Voice check-in">
+        <div class="voicehead">
+          <div class="when" id="v-when">Today · 09:04 · duration 2m 51s</div>
+          <div class="title">Daily recovery call</div>
+        </div>
+        <div class="eq" aria-hidden="true">
+          <span style="animation-delay:0s"></span><span style="animation-delay:.12s"></span><span style="animation-delay:.24s"></span>
+          <span style="animation-delay:.36s"></span><span style="animation-delay:.48s"></span><span style="animation-delay:.30s"></span>
+          <span style="animation-delay:.18s"></span><span style="animation-delay:.42s"></span><span style="animation-delay:.06s"></span>
+          <span style="animation-delay:.54s"></span><span style="animation-delay:.20s"></span><span style="animation-delay:.38s"></span>
+        </div>
+        <div class="transcript" id="transcript"></div>
+        <div class="extract">
+          <div class="lbl">Understood by Mend <span class="ai">Claude · structured extraction</span></div>
+          <div class="chips" id="chips"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: clinician cockpit -->
+      <div>
+        <div class="vitals" id="vitals"></div>
+
+        <div class="esc" id="esc"></div>
+
+        <div class="card" id="sbar-card">
+          <div class="sbar-h">
+            <div class="k">Clinician handoff · SBAR</div>
+            <div class="gen" id="sbar-gen"></div>
+          </div>
+          <div id="sbar-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- footer -->
+    <div class="foot">
+      <div class="col">
+        <h4>Reimbursement path (US)</h4>
+        <p>Remote patient monitoring <code>99453/99454/99457</code> + remote therapeutic monitoring <code>98975/98977/98980</code> — Mend's daily vitals + adherence check-ins bill as RPM/RTM.</p>
+      </div>
+      <div class="col">
+        <h4>Why it's safe</h4>
+        <p>The LLM extracts symptoms and writes the summary. It never decides escalation. A deterministic red-flag engine — auditable, testable, unit-covered — owns every green/amber/red verdict.</p>
+      </div>
+      <div class="col">
+        <h4>Stack</h4>
+        <p>Next.js · ElevenLabs Conversational AI · Claude (Sonnet) at the edges · deterministic clinical core · Supabase · Vercel.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const ICON = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+    dot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/></svg>'
+  };
+
+  const DATA = {
+    ok: {
+      note: "First call after discharge. Mild fever, but inside the early-phase envelope — Mend holds green.",
+      ptMeta: "82 F · R hip hemiarthroplasty · POD 4 · day 1 at home",
+      when: "At home · today 09:02 · duration 2m 18s",
+      transcript: [
+        {who:'agent', spk:'Mend', t:"Good morning Margaret. How did you sleep, and how's the pain around the hip today?"},
+        {who:'pt', spk:'Margaret', t:"Slept alright, thank you. It's a bit sore, maybe a three, but nothing like the first day."},
+        {who:'agent', spk:'Mend', t:"That's good to hear. Any chills, or does the wound feel more warm or leaky than yesterday?"},
+        {who:'pt', spk:'Margaret', t:"It feels a little warm but it's dry. I did my walk to the kitchen with the frame."}
+      ],
+      chips: [
+        {t:"Incisional pain 3/10", cls:"calm"},
+        {t:"Slept well", cls:"calm"},
+        {t:"Wound warm, dry — no discharge", cls:"calm"},
+        {t:"Mobilising with frame", cls:"calm"}
+      ],
+      vitals: [
+        {k:"Heart rate", num:"78", unit:"bpm", sub:"Sinus rhythm", state:"ok", pill:"Normal", ecg:{rate:78, tachy:false}},
+        {k:"Blood pressure", num:"118/74", unit:"mmHg", sub:"MAP 89", state:"ok", pill:"Normal"},
+        {k:"Temperature", num:"37.8", unit:"°C", sub:"Envelope ≤ 38.0 (early)", state:"ok", pill:"Within range"},
+        {k:"3-lead ECG", num:"", unit:"", sub:"Lead II · regular", state:"ok", pill:"Sinus", ecg:{rate:78, tachy:false}}
+      ],
+      esc: { level:"ok", lvl:"Green", head:"On track. Keep going.",
+        action:"<b>Continue your rehab plan.</b> Next check-in call tomorrow at 09:00. No action needed today.",
+        why: [
+          {ok:true, html:"Temp 37.8 °C sits <b>within the early-phase envelope</b> (<code>tempCMax 38.0</code> for POD 0–13) — not treated as infection."},
+          {ok:true, html:"Heart rate 78 bpm, regular sinus rhythm — <code>no tachycardia rule</code> triggered."},
+          {ok:true, html:"No red-flag symptoms extracted: wound dry, no calf pain, no breathlessness, pain controlled."}
+        ]
+      },
+      sbar: null
+    },
+    crit: {
+      note: "Six days home, alone. Breathlessness + calf pain, corroborated by tachycardia — clot pathway.",
+      ptMeta: "82 F · R hip hemiarthroplasty · POD 9 · day 6 at home",
+      when: "At home · today 09:04 · duration 2m 51s",
+      transcript: [
+        {who:'agent', spk:'Mend', t:"Morning Margaret. How are you feeling today — any pain, and how's your breathing?"},
+        {who:'pt', spk:'Margaret', t:"I'm a bit out of puff, love. Going to the bathroom left me really breathless."},
+        {who:'agent', spk:'Mend', t:"I'm sorry to hear that. Any pain when you breathe in, and how does your calf feel?"},
+        {who:'pt', spk:'Margaret', t:"There's a sharp catch in my chest when I breathe deep. My right calf's been sore and swollen too."}
+      ],
+      chips: [
+        {t:"Breathless on exertion", cls:"flag"},
+        {t:"Pleuritic chest pain", cls:"flag"},
+        {t:"R calf pain + swelling", cls:"flag"},
+        {t:"Palpitations", cls:"flag"}
+      ],
+      vitals: [
+        {k:"Heart rate", num:"122", unit:"bpm", sub:"Sinus tachycardia", state:"crit", pill:"High", ecg:{rate:122, tachy:true}},
+        {k:"Blood pressure", num:"104/68", unit:"mmHg", sub:"MAP 80 · borderline", state:"warn", pill:"Watch"},
+        {k:"Temperature", num:"37.4", unit:"°C", sub:"Afebrile", state:"ok", pill:"Normal"},
+        {k:"3-lead ECG", num:"", unit:"", sub:"Lead II · rate 122", state:"crit", pill:"Sinus tachy", ecg:{rate:122, tachy:true}}
+      ],
+      esc: { level:"crit", lvl:"Red", head:"Signs point to a possible clot in the lung.",
+        action:"<b>Call 911 or go to the emergency department now.</b> Mend has paged the on-call surgical team with the summary below.",
+        why: [
+          {ok:false, html:"Breathlessness <b>and</b> pleuritic chest pain reported — meets the <code>PE red-flag</code> symptom pair."},
+          {ok:false, html:"Corroborated by HR 122 bpm sinus tachycardia (<code>hr &gt; 110</code>) — subjective report + objective vital agree."},
+          {ok:false, html:"Right calf pain and swelling flag a likely <b>DVT source</b> — POD 9 sits inside the post-op VTE peak window."}
+        ]
+      },
+      sbar: {
+        gen: "generated 09:04 · Claude",
+        rows: [
+          {L:"S", txt:"<b>82 F, day 9 after right hip hemiarthroplasty, at home.</b> Acute breathlessness on exertion with pleuritic chest pain this morning."},
+          {L:"B", txt:"Hip fracture repaired POD 0, <b>discharged home POD 3</b> with home health. On enoxaparin prophylaxis. No prior VTE. Mobilising slowly with a frame."},
+          {L:"A", txt:"HR 122 (sinus tachycardia), BP 104/68, afebrile. Right calf pain + swelling. <b>Clinical concern: pulmonary embolism with DVT source.</b>"},
+          {L:"R", txt:"Advised patient to call 911 / attend ED. Suggest urgent CTPA and Doppler; hold next enoxaparin dose pending review."}
+        ]
+      }
+    }
+  };
+
+  // ---------- ECG drawing ----------
+  const BEAT = [
+    [0.00,0],[0.14,0],[0.18,-0.12],[0.22,0],[0.30,0],
+    [0.40,0.06],[0.44,-0.95],[0.48,0.30],[0.52,0],[0.60,0],
+    [0.72,-0.24],[0.82,0],[1.00,0]
+  ];
+  function drawEcg(canvas, rate, color){
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || 220, h = canvas.clientHeight || 34;
+    canvas.width = w*dpr; canvas.height = h*dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    const mid = h*0.62, amp = h*0.40;
+    const beats = Math.max(3, Math.round(rate/20));
+    const bw = w/beats;
+    ctx.beginPath();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = color;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    for (let b=0; b<beats; b++){
+      for (let i=0;i<BEAT.length;i++){
+        const x = b*bw + BEAT[i][0]*bw;
+        const y = mid + BEAT[i][1]*amp;
+        (b===0 && i===0) ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+    }
+    ctx.lineTo(w, mid);
+    ctx.stroke();
+  }
+
+  // ---------- render ----------
+  let current = 'crit';
+  function cssvar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  const ecgColor = { ok: ()=>cssvar('--ok'), warn:()=>cssvar('--warn'), crit:()=>cssvar('--crit') };
+
+  function render(key){
+    const d = DATA[key];
+    document.getElementById('pt-meta').textContent = d.ptMeta;
+    document.getElementById('v-when').textContent = d.when;
+    document.getElementById('scenario-note').textContent = "— " + d.note;
+
+    // transcript
+    document.getElementById('transcript').innerHTML = d.transcript.map(b =>
+      `<div class="bubble ${b.who}"><span class="spk">${b.spk}</span>${b.t}</div>`).join('');
+
+    // chips
+    document.getElementById('chips').innerHTML = d.chips.map(c =>
+      `<span class="chip ${c.cls}"><span class="cd"></span>${c.t}</span>`).join('');
+
+    // vitals
+    document.getElementById('vitals').innerHTML = d.vitals.map((v,i) => {
+      const numHtml = v.num ? `<div class="num">${v.num}<small>${v.unit}</small></div>` :
+        `<canvas class="trace" id="ecg-tile-${i}"></canvas>`;
+      return `<div class="vital ${v.state} fade">
+        <div class="vk">${v.k}<span class="pill ${v.state}">${v.pill}</span></div>
+        ${numHtml}
+        <div class="sub">${v.sub}</div>
+        ${v.ecg && v.num ? `<canvas class="trace" id="ecg-tile-${i}"></canvas>` : (v.num ? '' : '')}
+      </div>`;
+    }).join('');
+
+    // escalation
+    const e = d.esc;
+    document.getElementById('esc').className = `esc ${e.level} fade`;
+    document.getElementById('esc').innerHTML = `
+      <div class="esc-top">
+        <div class="esc-badge">
+          <div class="ring">${e.level==='ok'?ICON.check:ICON.alert}</div>
+          <div class="lvl">${e.lvl}</div>
+        </div>
+        <div class="esc-body">
+          <div class="head">${e.head}</div>
+          <div class="action">${e.action}</div>
+        </div>
+      </div>
+      <div class="why">
+        <div class="lbl">Why — deterministic rule trace <span class="engine">red-flag-engine.ts</span></div>
+        <ul>${e.why.map(r => `<li><span class="mk" style="color:${r.ok?'var(--ok)':'var(--crit)'}">${r.ok?ICON.check:ICON.alert}</span><span>${r.html}</span></li>`).join('')}</ul>
+      </div>`;
+
+    // SBAR
+    const gen = document.getElementById('sbar-gen');
+    const body = document.getElementById('sbar-body');
+    document.getElementById('sbar-card').classList.add('fade');
+    if (d.sbar){
+      gen.textContent = d.sbar.gen;
+      body.innerHTML = d.sbar.rows.map(r =>
+        `<div class="sbar-row"><div class="letter">${r.L}</div><div class="txt">${r.txt}</div></div>`).join('');
+    } else {
+      gen.textContent = "not generated";
+      body.innerHTML = `<div class="sbar-empty">${ICON.check}<span>No handoff generated — patient is within the normal recovery envelope. A clinician summary is only produced on amber or red.</span></div>`;
+    }
+
+    // draw ECGs
+    requestAnimationFrame(() => {
+      d.vitals.forEach((v,i) => {
+        if (v.ecg){
+          const c = document.getElementById('ecg-tile-'+i);
+          if (c) drawEcg(c, v.ecg.rate, ecgColor[v.state]());
+        }
+      });
+    });
+  }
+
+  function setScenario(key){
+    current = key;
+    document.getElementById('btn-ok').setAttribute('aria-pressed', key==='ok');
+    document.getElementById('btn-crit').setAttribute('aria-pressed', key==='crit');
+    render(key);
+  }
+
+  // theme toggle
+  const root = document.documentElement;
+  function applyThemeLabel(){
+    const dark = (root.getAttribute('data-theme') === 'dark') ||
+      (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.getElementById('theme-txt').textContent = dark ? 'Light' : 'Dark';
+  }
+  document.getElementById('theme').addEventListener('click', () => {
+    const dark = (root.getAttribute('data-theme') === 'dark') ||
+      (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    applyThemeLabel();
+    render(current); // redraw ECG with theme colours
+  });
+
+  window.addEventListener('resize', () => render(current));
+  applyThemeLabel();
+  setScenario('crit');
+</script>

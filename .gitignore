@@ -1,0 +1,44 @@
+# --- secrets: never commit these ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- dependencies ---
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/versions
+
+# --- next.js / build ---
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- test / coverage ---
+coverage/
+.vitest/
+
+# --- vercel ---
+.vercel
+
+# --- editor / os ---
+.DS_Store
+._*
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- logs ---
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
