@@ -76,9 +76,13 @@ export async function submitAnalyze(args: {
 
   const fetchImpl = args.fetchImpl ?? fetch;
   const form = new FormData();
+  // Copy into a standalone ArrayBuffer so BlobPart typing accepts it under strict TS libs
+  // (Uint8Array / SharedArrayBuffer are not assignable to BlobPart in this toolchain).
+  const audioBuffer = new ArrayBuffer(args.audio.byteLength);
+  new Uint8Array(audioBuffer).set(args.audio);
   form.append(
     "audio",
-    new Blob([args.audio], { type: args.contentType }),
+    new Blob([audioBuffer], { type: args.contentType }),
     args.filename ?? "audio.wav",
   );
   form.append("use_case", args.domain);
@@ -154,9 +158,15 @@ export async function pollJob(args: {
       }
 
       if (jobStatus === "failed" || jobStatus === "error") {
+        const apiError =
+          typeof data?.error === "string"
+            ? data.error
+            : typeof data?.message === "string"
+              ? data.message
+              : undefined;
         return {
           status: "error",
-          reason: `Amplifier job ended with status ${jobStatus}.`,
+          reason: `Amplifier job ended with status ${jobStatus}${apiError ? `: ${apiError}` : ""}.`,
         };
       }
     } catch (err) {
