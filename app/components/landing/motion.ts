@@ -28,6 +28,8 @@ export function useLandingMotion() {
   };
   return {
     reduce,
+    // Reduced-motion: paint immediately (no scroll-gated travel / fade-in).
+    initial: reduce ? ("show" as const) : ("hidden" as const),
     fadeUp: reduce ? reducedFade : fadeUp,
     staggerContainer: reduce
       ? ({ hidden: {}, show: {} } satisfies Variants)

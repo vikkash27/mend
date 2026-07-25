@@ -7,7 +7,7 @@ import { landingCopy } from "./copy";
 import { useLandingMotion } from "./motion";
 
 export function Close() {
-  const { fadeUp, staggerContainer, viewportOnce } = useLandingMotion();
+  const { fadeUp, staggerContainer, viewportOnce, initial } = useLandingMotion();
   const c = landingCopy.close;
 
   return (
@@ -15,7 +15,7 @@ export function Close() {
       <motion.div
         className="mx-auto max-w-6xl"
         variants={staggerContainer}
-        initial="hidden"
+        initial={initial}
         whileInView="show"
         viewport={viewportOnce}
       >

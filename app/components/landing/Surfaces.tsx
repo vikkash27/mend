@@ -6,7 +6,8 @@ import { landingCopy, PRODUCT_SURFACES } from "./copy";
 import { useLandingMotion } from "./motion";
 
 export function Surfaces() {
-  const { fadeUp, staggerContainer, viewportOnce, reduce } = useLandingMotion();
+  const { fadeUp, staggerContainer, viewportOnce, reduce, initial } =
+    useLandingMotion();
   const c = landingCopy.surfaces;
 
   return (
@@ -17,7 +18,7 @@ export function Surfaces() {
       <motion.div
         className="mx-auto max-w-6xl"
         variants={staggerContainer}
-        initial="hidden"
+        initial={initial}
         whileInView="show"
         viewport={viewportOnce}
       >

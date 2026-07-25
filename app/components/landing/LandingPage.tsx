@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Close } from "./Close";
 import { Gap } from "./Gap";
 import { Hero } from "./Hero";
@@ -9,6 +10,15 @@ import { Surfaces } from "./Surfaces";
 import { Trust } from "./Trust";
 
 export function LandingPage() {
+  // Scope smooth scrolling to the landing page so /call (and other demos) stay snappy.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("scroll-smooth");
+    return () => {
+      root.classList.remove("scroll-smooth");
+    };
+  }, []);
+
   return (
     <main id="top" className="relative min-h-dvh overflow-x-hidden bg-paper">
       <div
