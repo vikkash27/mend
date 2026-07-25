@@ -29,7 +29,8 @@ import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
  *
  * Scenario resolution (query param > active console store > green):
  *   /family                    active scenario from the console store
- *   /family?state=attention    drift fixture (harness / deep link)
+ *   /family?state=urgent       pe fixture (PE cut / harness deep link)
+ *   /family?state=attention    drift fixture (amber HR creep / harness)
  *   /family?state=well         green fixture (harness / deep link)
  */
 
