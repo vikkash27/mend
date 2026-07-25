@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { cn } from "@/lib/utils";
 
 /**
@@ -68,7 +69,11 @@ export function ClinicianShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[112rem] px-6 pb-20 md:px-8">{children}</main>
+      <main className="mx-auto w-full max-w-[112rem] px-6 pb-12 md:px-8">{children}</main>
+
+      <footer className="mx-auto w-full max-w-[112rem] px-6 pb-10 md:px-8">
+        <MedicalAdviceDisclaimer extra="Synthetic patients only — no protected health information." />
+      </footer>
     </div>
   );
 }

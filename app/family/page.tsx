@@ -1,5 +1,6 @@
 import { Phone, Send } from "lucide-react";
 import type { Metadata } from "next";
+import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { CheckinStrip, type CheckinDay } from "@/app/components/family/CheckinStrip";
 import { familyCopy } from "@/app/components/family/copy";
 import { SeverityChip } from "@/components/ui/severity-chip";
@@ -214,6 +215,7 @@ export default async function FamilyPage({
       <div className="mt-auto pt-16">
         <CheckinStrip days={days} />
         <p className="pt-8 text-lg text-ink-tertiary">Mend rings her every morning.</p>
+        <MedicalAdviceDisclaimer tone="family" className="pt-6" />
       </div>
     </main>
   );

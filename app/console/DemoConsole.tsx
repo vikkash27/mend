@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { BleHeartRate } from "@/app/components/BleHeartRate";
+import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Button } from "@/components/ui/button";
 import { SeverityChip } from "@/components/ui/severity-chip";
 import type { Decision, EcgDetermination, EcgReading, TrendFinding } from "@/lib/clinical/types";
@@ -700,10 +701,9 @@ export function DemoConsole() {
         </Panel>
       </div>
 
-      <p className="text-meta text-ink-tertiary">
-        Educational prototype — not medical advice. Synthetic patient data only. Manual
-        and BLE readings on this page are the operator&apos;s own.
-      </p>
+      <MedicalAdviceDisclaimer
+        extra="Synthetic patient data only. Manual and BLE readings on this page are the operator's own."
+      />
     </div>
   );
 }

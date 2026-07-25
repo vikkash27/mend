@@ -2,6 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Badge } from "@/components/ui/badge";
 import type {
   Decision,
@@ -291,6 +292,12 @@ export function CallStage({
           </AnimatePresence>
         </section>
       </main>
+
+      {/* Page footer — outside the absolute red takeover, so the peak frame
+          keeps one instruction and the honesty line still ships. */}
+      <footer className="shrink-0 border-t border-line px-6 py-3 lg:px-10 2xl:px-14">
+        <MedicalAdviceDisclaimer />
+      </footer>
     </div>
   );
 }
