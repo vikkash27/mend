@@ -30,12 +30,13 @@
   --color-severity-red-bg: #fef2f2;
   --color-severity-red-border: #fecaca;
 
-  /* Serif carries what Mend says. Sans carries what the engine measures. */
-  --font-serif: var(--font-instrument-serif), ui-serif, Iowan Old Style, Georgia,
+  /* Serif carries what Mend says. Sans carries what the engine measures.
+     IBM Plex — clinical/tech family, not the default AI-healthcare pairing. */
+  --font-serif: var(--font-ibm-plex-serif), ui-serif, Iowan Old Style, Georgia,
     serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, -apple-system,
     Segoe UI, sans-serif;
-  --font-heading: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-heading: var(--font-ibm-plex-serif), ui-serif, Georgia, serif;
 
   /* Default scale is shifted up so shadcn's text-sm/text-base land on a
      17px body minimum rather than the stock 14px. */

@@ -32,8 +32,8 @@ export function ClinicianShell({
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center gap-x-8 gap-y-2 px-6 md:px-8">
-          <p className="flex items-baseline gap-3 py-2">
+        <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center gap-x-6 gap-y-1 px-6 md:px-8">
+          <p className="flex min-h-11 items-center gap-3">
             <Link
               href="/"
               className="inline-flex min-h-11 items-center text-ink"
@@ -42,6 +42,9 @@ export function ClinicianShell({
               <MendLogo variant="lockup" size="sm" wordmarkClassName="text-xl" />
             </Link>
             <span className="eyebrow">Clinician</span>
+            <span className="hidden text-meta text-ink-tertiary md:inline">
+              Ridgeview Orthopedics · nurse line
+            </span>
             {breadcrumb ? (
               <span className="text-meta text-ink-tertiary">/ {breadcrumb}</span>
             ) : null}
@@ -56,7 +59,7 @@ export function ClinicianShell({
                 className={cn(
                   "inline-flex min-h-11 items-center rounded-md px-3 text-label",
                   item.href === active
-                    ? "bg-wash-strong font-medium text-ink"
+                    ? "bg-wash-strong font-medium text-ink ring-1 ring-inset ring-line-strong"
                     : "text-ink-secondary hover:bg-wash",
                 )}
               >
@@ -64,10 +67,6 @@ export function ClinicianShell({
               </Link>
             ))}
           </nav>
-
-          <p className="numeric ml-auto hidden text-meta text-ink-tertiary lg:block">
-            Ridgeview Orthopedics · nurse line
-          </p>
         </div>
         <LiveCallStrip />
       </header>
@@ -126,7 +125,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-xl border border-line bg-raised shadow-card",
+        "rounded-lg border border-line bg-raised shadow-card",
         className,
       )}
     >

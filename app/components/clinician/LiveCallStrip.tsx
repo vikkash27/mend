@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useSyncExternalStore } from "react";
 import { getLiveCall, subscribeLiveCall } from "@/lib/sim/live-call";
 
 /**
  * Sticky banner while a live check-in is active and the clinician is away
- * from the hub live pane. Return deep-links to `/clinician?live=1`.
+ * from the patient Live pane. Return deep-links to Margaret’s chart with
+ * `?live=1`.
  *
- * Hide on `/clinician` entirely: the hub owns embedded live UI (and may focus
- * it without the query after Call now). Show on engine / patient chart.
+ * Hide only when on `/clinician/[id]` with `live=1` (live pane focused).
+ * Do not hide solely because pathname is `/clinician` — hub no longer hosts Live.
  */
+
+const RETURN_HREF = "/clinician/margaret-ellison?live=1";
 
 function useLiveCallActive(): boolean {
   return useSyncExternalStore(
@@ -21,12 +24,14 @@ function useLiveCallActive(): boolean {
   );
 }
 
-export function LiveCallStrip() {
+function LiveCallStripInner() {
   const pathname = usePathname();
+  const params = useSearchParams();
   const active = useLiveCallActive();
 
-  const onHubLiveFocus = pathname === "/clinician";
-  if (!active || onHubLiveFocus) return null;
+  const onPatientLive =
+    /^\/clinician\/[^/]+$/.test(pathname) && params.get("live") === "1";
+  if (!active || onPatientLive) return null;
 
   return (
     <div role="status" className="border-t border-line bg-wash-strong">
@@ -40,12 +45,20 @@ export function LiveCallStrip() {
           <span className="text-ink-secondary">Margaret</span>
         </p>
         <Link
-          href="/clinician?live=1"
+          href={RETURN_HREF}
           className="inline-flex min-h-11 items-center rounded-md bg-ink px-4 text-label font-medium text-paper hover:bg-ink/90"
         >
           Return to live session
         </Link>
       </div>
     </div>
+  );
+}
+
+export function LiveCallStrip() {
+  return (
+    <Suspense fallback={null}>
+      <LiveCallStripInner />
+    </Suspense>
   );
 }

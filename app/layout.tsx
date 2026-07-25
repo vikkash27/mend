@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Serif } from "next/font/google";
 import { ConsoleShortcut } from "@/app/components/ConsoleShortcut";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-/** Everything Mend says. */
-const instrumentSerif = Instrument_Serif({
+/** Everything Mend says — human voice, SBAR, headlines. */
+const ibmPlexSerif = IBM_Plex_Serif({
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500"],
   style: ["normal", "italic"],
-  variable: "--font-instrument-serif",
+  variable: "--font-ibm-plex-serif",
   display: "swap",
 });
 
-/** Everything the engine measures. */
-const inter = Inter({
+/** Everything the engine measures — UI chrome, vitals, tables. */
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex-sans",
   display: "swap",
 });
 
@@ -34,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(inter.variable, instrumentSerif.variable, "antialiased")}
+      className={cn(ibmPlexSans.variable, ibmPlexSerif.variable, "antialiased")}
     >
       <body className="bg-paper font-sans text-body text-ink">
         {children}
