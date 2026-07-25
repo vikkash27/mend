@@ -9,6 +9,36 @@ error the choice accepts.
 
 ---
 
+## 2026-07-25 — Amplifier voice biomarkers: amber-only, high + quality ok
+
+**Rules:** `voice.cognitive_high`, `voice.respiratory_high_uncorroborated` in
+`lib/clinical/red-flag-engine.ts`
+
+**Decision:** Map Amplifier domain `level === "high"` with `quality === "ok"` to amber
+only. Cognitive parallels `confusion.new_onset` (nurse line). Respiratory high without
+existing PE red corroboration is amber (surgeon office), never invents PE red.
+Moderate / unknown / low and non-ok quality fail open (no fire). Existing PE red rules
+still win when breathless + tachycardia (etc.) because RED is evaluated first.
+
+**Rejected alternative:** Treating high respiratory voice biomarker as PE red on its own,
+or elevating moderate levels to amber.
+
+**Reasoning:** Voice biomarkers are post-call adjunct signals without symptom/vital
+corroboration built in. Inventing PE red from vendor voice alone would over-escalate
+without a written corroboration story; ignoring high cognitive/respiratory signals
+entirely would under-escalate relative to confusion/breathlessness amber policy.
+
+**Accepted error direction:** Over-triage to amber nurse/surgeon contact for true-high
+voice signals; under-triage relative to PE red when voice is the only signal (by design).
+
+**Status:** UNCITED — engineering/clinical mapping judgment pending Amplifier spike lock
+and citation. Rationale strings carry `source: amplifier voice biomarker`.
+
+**Signed off by:** implementer mapping for hackathon demo, 2026-07-25 — needs clinical
+lead review before real use.
+
+---
+
 ## 2026-07-25 — Sepsis RED fires on fever + tachycardia without a required source
 
 **Rule:** `sepsis.*` in `lib/clinical/red-flag-engine.ts`

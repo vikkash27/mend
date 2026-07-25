@@ -6,6 +6,7 @@ import type {
   Phase,
   Symptoms,
   VitalsReading,
+  VoiceBiomarkers,
 } from "./types";
 import { usableVitals } from "./vitals";
 
@@ -22,6 +23,11 @@ export interface EvaluateInput {
    * successfully (including a genuine empty report).
    */
   symptomsUnusable?: boolean;
+  /**
+   * Optional post-call Amplifier voice biomarkers. Absent, insufficient, or
+   * unknown levels fail open — they never invent PE red on their own.
+   */
+  voiceBiomarkers?: VoiceBiomarkers;
 }
 
 /**
@@ -59,6 +65,11 @@ interface Context {
    * read as an unremarkable check-in.
    */
   symptomsUnusable: boolean;
+  /**
+   * Present only when quality is "ok". Unknown/moderate levels never fire
+   * voice rules (fail-open); high levels may contribute amber only.
+   */
+  voiceBiomarkers: VoiceBiomarkers | undefined;
 }
 
 interface Rule {
@@ -98,6 +109,12 @@ function buildContext(input: EvaluateInput): Context {
     vitals.respRate === undefined;
   const vitalsUnusable = vitals.quality !== "ok" || noPhysiologicData;
 
+  const voiceBiomarkers =
+    input.voiceBiomarkers !== undefined &&
+    input.voiceBiomarkers.quality === "ok"
+      ? input.voiceBiomarkers
+      : undefined;
+
   return {
     dayPostOp: input.dayPostOp,
     symptoms: input.symptoms,
@@ -110,6 +127,7 @@ function buildContext(input: EvaluateInput): Context {
     fevered,
     vitalsUnusable,
     symptomsUnusable: input.symptomsUnusable === true,
+    voiceBiomarkers,
   };
 }
 
@@ -126,7 +144,9 @@ const breathlessOrChestPain = (ctx: Context): boolean =>
  * RED  (in order): pulmonary embolism -> hypoxia -> shock/bleeding ->
  *                  hip dislocation -> sepsis
  * AMBER (in order): DVT -> wound infection -> new AF -> uncontrolled pain ->
- *                  new confusion -> failed symptom extraction ->
+ *                  new confusion -> voice cognitive high ->
+ *                  voice respiratory high (uncorroborated) ->
+ *                  failed symptom extraction ->
  *                  unusable vitals with no other explanation
  * GREEN: only reached when no RED or AMBER rule matched. Always has an
  *        empty `firedRules` array — a green verdict is never "a rule fired
@@ -304,6 +324,36 @@ const AMBER_RULES: Rule[] = [
     call: "nurse_line",
     test: (ctx) => ctx.symptoms.newConfusion === true,
     rationale: () => "New confusion reported since surgery.",
+  },
+  {
+    id: "voice.cognitive_high",
+    condition: "Voice cognitive concern",
+    severity: "amber",
+    action:
+      "Contact the nurse line today to review this voice-based cognitive concern.",
+    call: "nurse_line",
+    // Fail-open: only exact "high" with quality ok (quality gated in buildContext).
+    test: (ctx) => ctx.voiceBiomarkers?.cognitive.level === "high",
+    rationale: (ctx) =>
+      `Amplifier cognitive voice biomarker level "${ctx.voiceBiomarkers!.cognitive.level}"` +
+      `${ctx.voiceBiomarkers!.cognitive.score !== undefined ? ` (score ${ctx.voiceBiomarkers!.cognitive.score})` : ""}` +
+      `; source: amplifier voice biomarker.`,
+  },
+  {
+    id: "voice.respiratory_high_uncorroborated",
+    condition: "Voice respiratory concern",
+    severity: "amber",
+    action:
+      "Contact the surgeon's office today to review this voice-based respiratory concern.",
+    call: "surgeon_office",
+    // Reaching amber means no RED PE rule already won. Voice alone must never
+    // invent PE red — high respiratory without symptom/vital corroboration
+    // downgrades urgency to amber, parallel to pe.breathless_no_tachycardia.
+    test: (ctx) => ctx.voiceBiomarkers?.respiratory.level === "high",
+    rationale: (ctx) =>
+      `Amplifier respiratory voice biomarker level "${ctx.voiceBiomarkers!.respiratory.level}"` +
+      `${ctx.voiceBiomarkers!.respiratory.score !== undefined ? ` (score ${ctx.voiceBiomarkers!.respiratory.score})` : ""}` +
+      ` without corroborating PE red inputs; source: amplifier voice biomarker.`,
   },
   {
     id: "symptoms.extraction_failed",

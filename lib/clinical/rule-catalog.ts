@@ -141,6 +141,26 @@ const extractionGate: ThresholdRef = () => ({
     "Parallel to vitals.unusable_no_data.",
 });
 
+const voiceQualityGate: ThresholdRef = () => ({
+  label: "Voice biomarker quality gate",
+  value: 'quality must be "ok"',
+  derivation:
+    "buildContext() drops voiceBiomarkers unless quality is ok; insufficient/error fail open",
+  source:
+    "Fail-open policy in lib/clinical/red-flag-engine.ts (voice.*): " +
+    "unknown/moderate levels and non-ok quality never fire. " +
+    "source: amplifier voice biomarker.",
+});
+
+const voiceLevelHigh: ThresholdRef = () => ({
+  label: "Voice domain level",
+  value: "high",
+  derivation: 'Exact level === "high"; moderate/unknown/low do not fire',
+  source:
+    "Mapping choice logged in docs/clinical-decisions.md. " +
+    "source: amplifier voice biomarker.",
+});
+
 const trendRate = (label: string, value: string, note: string): ThresholdRef => () => ({
   label,
   value,
@@ -297,6 +317,24 @@ const ENTRIES: readonly RuleEntry[] = [
     test: "New confusion reported since surgery.",
     inputs: [{ kind: "symptom", key: "newConfusion", label: "New confusion" }],
     thresholds: [],
+  },
+  {
+    id: "voice.cognitive_high",
+    origin: "red-flag-engine",
+    severity: "amber",
+    condition: "Voice cognitive concern",
+    test: "Amplifier cognitive voice biomarker level is high and quality is ok. Parallel to newConfusion amber; never sets red.",
+    inputs: [],
+    thresholds: [voiceQualityGate, voiceLevelHigh],
+  },
+  {
+    id: "voice.respiratory_high_uncorroborated",
+    origin: "red-flag-engine",
+    severity: "amber",
+    condition: "Voice respiratory concern",
+    test: "Amplifier respiratory voice biomarker level is high and quality is ok, and no RED PE rule already won from symptoms/vitals. Voice alone never invents PE red.",
+    inputs: [],
+    thresholds: [voiceQualityGate, voiceLevelHigh],
   },
   {
     id: "symptoms.extraction_failed",

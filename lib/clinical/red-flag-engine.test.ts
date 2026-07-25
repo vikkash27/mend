@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getPhase } from "./recovery-graph";
 import { evaluate } from "./red-flag-engine";
-import type { EcgReading, Symptoms, VitalsReading } from "./types";
+import type { EcgReading, Symptoms, VitalsReading, VoiceBiomarkers } from "./types";
 
 const noSymptoms: Symptoms = {};
 
@@ -22,6 +22,18 @@ function ecg(partial: Partial<EcgReading> = {}): EcgReading {
     ...partial,
   };
 }
+
+function voice(partial: Partial<VoiceBiomarkers> = {}): VoiceBiomarkers {
+  return {
+    quality: "ok",
+    respiratory: { level: "unknown" },
+    cognitive: { level: "unknown" },
+    source: "amplifier",
+    ...partial,
+  };
+}
+
+const unremarkableVitals = vitals({ hr: 76, spo2: 97, tempC: 36.9, sbp: 122 });
 
 describe("evaluate — vignette table (binding, from task-4-brief.md)", () => {
   it("1: day5, painControlled true, unremarkable vitals -> green", () => {
@@ -380,5 +392,86 @@ describe("evaluate — co-occurring findings are surfaced consistently in ration
     });
     expect(d.firedRules).toEqual(["wound_infection.fever"]);
     expect(d.rationale[0]).not.toContain("wound discharge");
+  });
+});
+
+describe("evaluate — Amplifier voice biomarkers", () => {
+  it("high cognitive + quality ok -> amber voice.cognitive_high with amplifier source in rationale", () => {
+    const d = evaluate({
+      dayPostOp: 5,
+      symptoms: { painControlled: true },
+      vitals: unremarkableVitals,
+      voiceBiomarkers: voice({ cognitive: { level: "high", score: 0.9 } }),
+    });
+    expect(d.level).toBe("amber");
+    expect(d.condition).toBe("Voice cognitive concern");
+    expect(d.firedRules).toEqual(["voice.cognitive_high"]);
+    expect(d.rationale[0]).toContain("source: amplifier voice biomarker");
+  });
+
+  it("high respiratory alone -> amber not red (voice does not invent PE red)", () => {
+    const d = evaluate({
+      dayPostOp: 5,
+      symptoms: { painControlled: true },
+      vitals: unremarkableVitals,
+      voiceBiomarkers: voice({ respiratory: { level: "high", score: 0.88 } }),
+    });
+    expect(d.level).toBe("amber");
+    expect(d.level).not.toBe("red");
+    expect(d.condition).not.toBe("Suspected pulmonary embolism");
+    expect(d.firedRules).toEqual(["voice.respiratory_high_uncorroborated"]);
+    expect(d.rationale[0]).toContain("source: amplifier voice biomarker");
+  });
+
+  it("breathless + tachycardia + high respiratory -> red PE wins severity", () => {
+    const d = evaluate({
+      dayPostOp: 4,
+      symptoms: { breathless: true },
+      vitals: vitals({ hr: 122, spo2: 97 }),
+      voiceBiomarkers: voice({ respiratory: { level: "high" } }),
+    });
+    expect(d.level).toBe("red");
+    expect(d.condition).toBe("Suspected pulmonary embolism");
+    expect(d.firedRules).toEqual(["pe.breathless_with_tachycardia"]);
+    expect(d.firedRules).not.toContain("voice.respiratory_high_uncorroborated");
+  });
+
+  it("missing voiceBiomarkers leaves an otherwise-green check-in green", () => {
+    const d = evaluate({
+      dayPostOp: 5,
+      symptoms: { painControlled: true },
+      vitals: unremarkableVitals,
+    });
+    expect(d.level).toBe("green");
+    expect(d.firedRules).toEqual([]);
+  });
+
+  it("unknown / moderate voice levels fail open (do not fire voice rules)", () => {
+    const unknown = evaluate({
+      dayPostOp: 5,
+      symptoms: { painControlled: true },
+      vitals: unremarkableVitals,
+      voiceBiomarkers: voice({
+        cognitive: { level: "unknown" },
+        respiratory: { level: "moderate" },
+      }),
+    });
+    expect(unknown.level).toBe("green");
+    expect(unknown.firedRules).toEqual([]);
+  });
+
+  it("insufficient voice quality does not fire high-level voice rules", () => {
+    const d = evaluate({
+      dayPostOp: 5,
+      symptoms: { painControlled: true },
+      vitals: unremarkableVitals,
+      voiceBiomarkers: voice({
+        quality: "insufficient",
+        cognitive: { level: "high" },
+        respiratory: { level: "high" },
+      }),
+    });
+    expect(d.level).toBe("green");
+    expect(d.firedRules).toEqual([]);
   });
 });
