@@ -27,6 +27,7 @@ vi.mock("@/lib/db/queries", () => ({
   fetchLatestEcg: async () => undefined,
   fetchLatestVitals: async () => undefined,
   fetchVitalsHistory: async () => [],
+  fetchRecentCheckins: async () => [],
   insertCheckin,
   insertEscalation,
   insertVitals,

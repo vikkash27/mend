@@ -3,6 +3,7 @@ import { composeDecision } from "@/lib/clinical/compose";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluate } from "@/lib/clinical/red-flag-engine";
 import { DEFAULT_PATIENT_FIRST_NAME, firstName } from "@/lib/clinical/scripts";
+import { assessNovelty, type PriorDecision } from "@/lib/clinical/novelty";
 import { buildSymptomsHistory } from "@/lib/clinical/symptoms-history";
 import { evaluateTrends } from "@/lib/clinical/trends";
 import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
@@ -12,6 +13,7 @@ import {
   fetchDemoPatient,
   fetchLatestEcg,
   fetchLatestVitals,
+  fetchRecentCheckins,
   fetchVitalsHistory,
   insertCheckin,
   insertEscalation,
@@ -77,6 +79,8 @@ interface ClinicalContext {
   vitals: VitalsReading;
   ecg: EcgReading | undefined;
   history: VitalsReading[];
+  /** Previous verdicts, oldest first — used only to say whether today's finding is new. */
+  priorDecisions: PriorDecision[];
 }
 
 /** Loads the demo patient's identity plus latest vitals/ECG/history from
@@ -94,6 +98,7 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
     vitals: scenarioVitals(fallbackScenario, now),
     ecg: scenarioEcg(fallbackScenario),
     history: scenarioHistory(fallbackScenario),
+    priorDecisions: [],
   };
 
   const supabase = getSupabaseClient();
@@ -109,11 +114,24 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
       return fallback;
     }
 
-    const [vitals, ecg, history] = await Promise.all([
+    const [vitals, ecg, history, recentCheckins] = await Promise.all([
       fetchLatestVitals(supabase, patient.id),
       fetchLatestEcg(supabase, patient.id),
       fetchVitalsHistory(supabase, patient.id),
+      fetchRecentCheckins(supabase, patient.id),
     ]);
+
+    // Rows whose stored decision is unreadable are dropped rather than guessed
+    // at: a wrong prior would mislabel today's finding as new.
+    const priorDecisions: PriorDecision[] = recentCheckins.flatMap((row) => {
+      const d = row.decision as { level?: string; firedRules?: unknown } | null;
+      if (!d?.level) return [];
+      return [{
+        dayPostOp: row.day_post_op ?? 0,
+        level: d.level as PriorDecision["level"],
+        firedRules: Array.isArray(d.firedRules) ? (d.firedRules as string[]) : [],
+      }];
+    });
 
     return {
       patientId: patient.id,
@@ -123,6 +141,7 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
       vitals: vitals ?? fallback.vitals,
       ecg: ecg ?? fallback.ecg,
       history: history.length > 0 ? history : fallback.history,
+      priorDecisions,
     };
   } catch (err) {
     console.warn("[api/checkin] Supabase read failed — using fixture vitals/ECG/history.", err);
@@ -293,7 +312,8 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const extraction = await extractSymptoms(body.transcript);
   const symptoms = extraction.symptoms;
-  const { patientId, patientName, procedure, caregiverPhone, vitals, ecg, history } = await loadClinicalContext();
+  const { patientId, patientName, procedure, caregiverPhone, vitals, ecg, history, priorDecisions } =
+    await loadClinicalContext();
 
   const decision = evaluate({
     dayPostOp,
@@ -355,8 +375,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     earlyEscalationId,
   });
 
+  // Is this finding new, or has it been true for days? Never changes the
+  // verdict — a patient unchanged at red is still red — but a clinician
+  // triaging a worklist needs to know which reds appeared this morning.
+  const novelty = assessNovelty(composed, priorDecisions);
+
   return NextResponse.json({
     decision: composed,
+    novelty,
     trendFindings,
     phase,
     sbar,

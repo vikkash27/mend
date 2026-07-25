@@ -222,6 +222,32 @@ export async function fetchLatestEcg(
  * "Supabase unavailable" — both mean the agent falls back to its default
  * greeting, never an error.
  */
+/**
+ * The last few decisions, oldest first — enough to say whether today's finding
+ * is new or has been true for days. Deliberately small: novelty is a question
+ * about the recent past, not the whole admission.
+ */
+export async function fetchRecentCheckins(
+  supabase: SupabaseClient<Database>,
+  patientId: string,
+  limit = 7,
+): Promise<CheckinRow[]> {
+  const result = await withTimeout(
+    supabase
+      .from("checkins")
+      .select("*")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    QUERY_TIMEOUT_MS,
+  );
+
+  if (!result || result.error || !result.data) {
+    return [];
+  }
+  return [...result.data].reverse();
+}
+
 export async function fetchLatestCheckin(
   supabase: SupabaseClient<Database>,
   patientId: string,
