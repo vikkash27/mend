@@ -136,6 +136,7 @@ describe("POST /api/vitals", () => {
           patient_id: "demo-patient-id",
           recorded_at: VALID_READING.timestamp,
           hr: 118,
+          pain_score: null,
           source: "ble_heart_rate",
           device_label: "Wahoo TICKR",
           quality: "ok",

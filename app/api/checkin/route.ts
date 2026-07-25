@@ -3,6 +3,7 @@ import { composeDecision } from "@/lib/clinical/compose";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluate } from "@/lib/clinical/red-flag-engine";
 import { DEFAULT_PATIENT_FIRST_NAME, firstName } from "@/lib/clinical/scripts";
+import { buildSymptomsHistory } from "@/lib/clinical/symptoms-history";
 import { evaluateTrends } from "@/lib/clinical/trends";
 import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
 import {
@@ -12,6 +13,7 @@ import {
   fetchVitalsHistory,
   insertCheckin,
   insertEscalation,
+  insertVitals,
 } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
@@ -125,19 +127,6 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
   }
 }
 
-/**
- * `evaluateTrends` wants one `Symptoms` entry per history point (for the
- * pain-score trend). The schema does not store a symptoms snapshot per
- * vitals row, only per checkin, so historical points carry no known
- * symptoms and only the current check-in's symptoms are attached to the
- * most recent point. This under-counts pain-score trend data on real
- * (non-fixture) history, which is a known limitation recorded in the
- * task report rather than silently masked.
- */
-function buildSymptomsHistory(history: VitalsReading[], latest: Symptoms): Symptoms[] {
-  return history.map((_, i) => (i === history.length - 1 ? latest : {}));
-}
-
 async function persist(args: {
   patientId: string | undefined;
   dayPostOp: number;
@@ -159,12 +148,37 @@ async function persist(args: {
   }
 
   try {
+    const painScore =
+      typeof args.symptoms.painScore === "number"
+        ? args.symptoms.painScore
+        : typeof args.vitals.painScore === "number"
+          ? args.vitals.painScore
+          : null;
+
+    // Write the reading (with pain) into the vitals time series so the next
+    // check-in's trend slope sees a distinct timepoint, not only today's
+    // symptoms jsonb on the checkins row.
+    await insertVitals(supabase, {
+      patient_id: args.patientId,
+      recorded_at: args.vitals.timestamp,
+      hr: args.vitals.hr ?? null,
+      sbp: args.vitals.sbp ?? null,
+      dbp: args.vitals.dbp ?? null,
+      temp_c: args.vitals.tempC ?? null,
+      spo2: args.vitals.spo2 ?? null,
+      resp_rate: args.vitals.respRate ?? null,
+      pain_score: painScore,
+      source: args.vitals.source,
+      device_label: args.vitals.deviceLabel ?? null,
+      quality: args.vitals.quality,
+    });
+
     const checkinId = await insertCheckin(supabase, {
       patient_id: args.patientId,
       day_post_op: args.dayPostOp,
       transcript: args.transcript,
       symptoms: args.symptoms,
-      vitals: args.vitals,
+      vitals: { ...args.vitals, ...(painScore !== null ? { painScore } : {}) },
       decision: args.decision,
       trend_findings: args.trendFindings,
       sbar: args.sbar,

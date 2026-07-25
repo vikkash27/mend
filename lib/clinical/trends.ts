@@ -302,7 +302,11 @@ function tempFinding(window: WindowPoint[], phase: Phase): TrendFinding | undefi
  * observation only.
  */
 function painScoreFinding(window: WindowPoint[]): TrendFinding | undefined {
-  const result = regress(extractPoints(window, (p) => p.symptoms.painScore));
+  // Prefer the per-reading painScore persisted on the vitals row; fall back
+  // to the parallel symptoms array so fixture-driven tests keep working.
+  const result = regress(
+    extractPoints(window, (p) => p.reading.painScore ?? p.symptoms.painScore),
+  );
   if (!result || result.slope < PAIN_SLOPE_THRESHOLD_PER_DAY) {
     return undefined;
   }

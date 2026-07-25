@@ -93,6 +93,37 @@ describe("evaluateTrends — brief cases", () => {
     expect(findings[0].description).toContain("7");
   });
 
+  it("painScore on each vitals row (distinct timepoints) drives the slope without a symptoms array", () => {
+    const history = [
+      reading(0, { painScore: 3 }),
+      reading(1, { painScore: 5 }),
+      reading(2, { painScore: 7 }),
+    ];
+
+    const findings = evaluateTrends(history, history.map(noSymptoms), phase);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].metric).toBe("painScore");
+    expect(findings[0].description).toContain("3");
+    expect(findings[0].description).toContain("7");
+  });
+
+  it("per-row painScore wins over a stale parallel symptoms entry", () => {
+    const history = [
+      reading(0, { painScore: 3 }),
+      reading(1, { painScore: 5 }),
+      reading(2, { painScore: 8 }),
+    ];
+    // Stale parallel array that would not fire on its own (flat at 2).
+    const symptoms: Symptoms[] = [{ painScore: 2 }, { painScore: 2 }, { painScore: 2 }];
+
+    const findings = evaluateTrends(history, symptoms, phase);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].metric).toBe("painScore");
+    expect(findings[0].description).toContain("8");
+  });
+
   it("flat, normal series -> empty array", () => {
     const history = [
       reading(0, { hr: 75, spo2: 97, tempC: 36.8 }),

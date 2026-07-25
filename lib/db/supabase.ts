@@ -42,6 +42,7 @@ export type VitalsRow = {
   temp_c: number | null;
   spo2: number | null;
   resp_rate: number | null;
+  pain_score: number | null;
   source: string;
   device_label: string | null;
   quality: string;
@@ -57,6 +58,7 @@ export type VitalsInsert = {
   temp_c?: number | null;
   spo2?: number | null;
   resp_rate?: number | null;
+  pain_score?: number | null;
   source: string;
   device_label?: string | null;
   quality: string;

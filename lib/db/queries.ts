@@ -5,6 +5,7 @@ import type {
   Database,
   EcgReadingRow,
   EscalationInsert,
+  VitalsInsert,
   VitalsRow,
 } from "./supabase";
 import type {
@@ -115,6 +116,7 @@ function rowToVitalsReading(row: VitalsRow): VitalsReading {
     ...(row.temp_c !== null ? { tempC: row.temp_c } : {}),
     ...(row.spo2 !== null ? { spo2: row.spo2 } : {}),
     ...(row.resp_rate !== null ? { respRate: row.resp_rate } : {}),
+    ...(row.pain_score !== null ? { painScore: row.pain_score } : {}),
     source: toVitalsSource(row.source),
     ...(row.device_label !== null ? { deviceLabel: row.device_label } : {}),
     quality: toQuality(row.quality),
@@ -260,6 +262,15 @@ export async function insertCheckin(
     return undefined;
   }
   return result.data.id;
+}
+
+/** Persists one vitals reading, including optional per-row pain_score so
+ * the trend engine can regress pain across distinct timepoints. */
+export async function insertVitals(
+  supabase: SupabaseClient<Database>,
+  insert: VitalsInsert,
+): Promise<void> {
+  await withTimeout(supabase.from("vitals").insert(insert), WRITE_TIMEOUT_MS);
 }
 
 export async function insertEscalation(

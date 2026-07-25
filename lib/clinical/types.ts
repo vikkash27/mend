@@ -46,6 +46,14 @@ export interface VitalsReading {
   tempC?: number;
   spo2?: number;
   respRate?: number;
+  /**
+   * 0-10 pain score captured alongside this reading. Optional because BLE
+   * heart-rate ticks and device spot-checks do not carry pain; voice
+   * check-ins do. The trend engine prefers this per-row value over a
+   * parallel symptoms array so the pain slope is computed from genuinely
+   * distinct timepoints on real (non-fixture) history.
+   */
+  painScore?: number;
   source: VitalsSource;
   deviceLabel?: string;
   quality: "ok" | "poor" | "stale";

@@ -43,6 +43,11 @@ create table if not exists vitals (
   temp_c numeric(4, 1),
   spo2 integer,
   resp_rate integer,
+  -- Optional 0-10 pain score at this timepoint. Voice check-ins write it;
+  -- BLE/manual spot readings leave it null. Required for the pain-score
+  -- trend slope over real history (lib/clinical/trends.ts). Constraint
+  -- added below so both fresh creates and re-runs share one named check.
+  pain_score integer,
   source text not null check (
     source in ('ble_heart_rate', 'manual', 'kardia_6l', 'simulated')
   ),
@@ -51,6 +56,25 @@ create table if not exists vitals (
 );
 
 alter table vitals disable row level security;
+
+-- Additive, idempotent: older deployments that created `vitals` before
+-- pain_score existed pick the column up on re-run.
+alter table vitals
+  add column if not exists pain_score integer;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'vitals_pain_score_check'
+      and conrelid = 'vitals'::regclass
+  ) then
+    alter table vitals
+      add constraint vitals_pain_score_check
+      check (pain_score is null or (pain_score >= 0 and pain_score <= 10));
+  end if;
+end $$;
 
 -- Trailing-history lookups always filter by patient and sort by recency;
 -- DESC matches that access pattern exactly (evaluateTrends reads the most
