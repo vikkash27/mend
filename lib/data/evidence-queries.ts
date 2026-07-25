@@ -28,11 +28,26 @@ const HUMAN = 'AND humans[MeSH Terms] AND english[Language]';
 
 export const EVIDENCE_QUERIES: EvidenceQuery[] = [
   {
+    // ADJUDICATED 2026-07-25 — docs/adjudicated/news2-vital-thresholds.md.
+    // Resolved for SpO2, systolic BP and the early-phase temperature line; the
+    // heart-rate lines are NOT NEWS2 boundaries and stay uncited.
     ruleId: "deterioration-score",
     location: "red-flag-engine.ts — HR/BP/temp thresholds generally",
     claimToVerify:
       "NEWS2 is the appropriate published basis for generic deterioration thresholds, and what its validated cut-points are.",
     term: `("NEWS2"[tiab] OR "National Early Warning Score"[tiab]) AND (validation[tiab] OR "predictive value"[tiab] OR derivation[tiab]) ${HUMAN}`,
+  },
+  {
+    // Left OPEN by that adjudication. NEWS2 was derived and validated on
+    // inpatients with a full observation set taken by someone in the room; Mend
+    // reads four self-reported numbers down a phone. Whether the boundaries
+    // transfer is the open question, and it is not answered by NEWS2's own
+    // validation papers.
+    ruleId: "deterioration-score-transfer",
+    location: "recovery-graph.ts — hrMax 100/95, tempCMax 37.5 after day 14",
+    claimToVerify:
+      "Whether NEWS2-derived single-parameter boundaries retain their operating characteristics on remotely self-reported observations, and whether any published post-operative early-warning cut-points exist for heart rate.",
+    term: `("early warning score"[tiab] OR NEWS2[tiab]) AND (postoperative[tiab] OR "post-discharge"[tiab] OR remote[tiab] OR telemonitoring[tiab]) AND (validation[tiab] OR calibration[tiab] OR "predictive value"[tiab]) ${HUMAN}`,
   },
   {
     ruleId: "sepsis",

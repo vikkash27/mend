@@ -25,6 +25,7 @@ import {
   type ChartTabId,
   chartTabHref,
 } from "./chart-tabs";
+import { OhsSummary } from "@/app/components/ohs/OhsSummary";
 import { ChartNotes } from "./ChartNotes";
 import { Panel, SectionHeading } from "./ClinicianShell";
 import { clockTime, fullDate, timeAgo } from "./format";
@@ -469,6 +470,11 @@ export function PatientChart({
                       />
                     ))}
                   </div>
+
+                  {/* The patient-reported side of the same question. Vitals say
+                      what the body is doing; the Oxford Hip Score says what she
+                      can actually do with it, and the two can disagree. */}
+                  <OhsSummary />
                 </div>
               ) : null}
 

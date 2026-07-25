@@ -164,8 +164,60 @@ export async function POST(req: NextRequest) {
   });
 }
 
-/** GET /api/prn — the patient's current medication list. */
-export async function GET() {
+interface PendingRow {
+  id: string;
+  requested_at: string;
+  pain_score: number | null;
+  assessment: PrnAssessment;
+  medication_id: string;
+  patients: { name: string } | null;
+  medications: { name: string; dose: string; is_opioid: boolean } | null;
+}
+
+/**
+ * GET /api/prn — the patient's medication list.
+ * GET /api/prn?pending=1 — the clinician's queue of undecided requests.
+ *
+ * The queue is deliberately *undecided-only*. A request that has been approved
+ * or declined is a completed episode of care and belongs in the audit trail, not
+ * in a worklist — leaving it visible is how a decided request gets decided twice.
+ */
+export async function GET(req: NextRequest) {
+  if (req.nextUrl.searchParams.get("pending") === "1") {
+    const supabase = getSupabaseClient();
+    // No database is not the same as no requests. Say which one it is, so an
+    // empty queue is never read as "nobody is waiting" when it means "unknown".
+    if (!supabase) {
+      return NextResponse.json({ requests: [], unavailable: true });
+    }
+    try {
+      const { data, error } = await supabase
+        .from("prn_requests")
+        .select("id, requested_at, pain_score, assessment, medication_id, patients (name), medications (name, dose, is_opioid)")
+        .is("decision", null)
+        .order("requested_at", { ascending: false })
+        .limit(20);
+      if (error) return NextResponse.json({ requests: [], unavailable: true });
+
+      // The generated row types do not describe the embedded joins, so the
+      // shape is asserted once here rather than spread through the mapping.
+      const rows = (data ?? []) as unknown as PendingRow[];
+      const requests = rows.map((r) => ({
+        requestId: r.id,
+        requestedAt: r.requested_at,
+        patientName: r.patients?.name ?? "Patient",
+        medicationName: r.medications?.name ?? r.medication_id,
+        medicationDose: r.medications?.dose ?? "",
+        isOpioid: Boolean(r.medications?.is_opioid),
+        painScore: r.pain_score ?? undefined,
+        assessment: r.assessment,
+      }));
+      return NextResponse.json({ requests });
+    } catch {
+      return NextResponse.json({ requests: [], unavailable: true });
+    }
+  }
+
   return NextResponse.json({
     medications: DEMO_MEDICATIONS.map((m) => ({
       id: m.id,

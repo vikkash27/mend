@@ -30,9 +30,10 @@ So each rule needs three things, not one:
 
 | Rule / constant | Where it lives | Source it should come from |
 |---|---|---|
-| Generic deterioration (HR, BP, temp) | `red-flag-engine.ts` | **NEWS2** (Royal College of Physicians, 2017) — already a published deterministic lookup table. Adopt it rather than reinventing it. |
+| Generic deterioration (SpO₂, systolic BP) | `red-flag-engine.ts` | **Adjudicated 2026-07-25** — **NEWS2** (RCP 2017; PMID 31092526). SBP <90 is the exact NEWS2 3-point boundary; SpO₂ <90 sits one point inside NEWS2's own 3-point band (≤91). Individual boundaries only — Mend cannot compute a NEWS2 aggregate (no respiratory rate, no consciousness level over a phone call). See `docs/adjudicated/news2-vital-thresholds.md`. |
+| Generic deterioration (heart rate) | `recovery-graph.ts` | **Still uncited.** NEWS2 steps at 90 and 110; the envelope's 100/95 sit mid-band and are *not* NEWS2 numbers. Labelled as such in the source string rather than attributed. |
 | Sepsis (`tempC ≥ 38.5` + `hr > 120`) | `red-flag-engine.ts` | **Sepsis-3** (Singer et al., *JAMA* 2016) qSOFA; **CMS SEP-1** for what a US emergency department will act on |
-| PE / DVT (`hr > 110`, symptom pairs) | `red-flag-engine.ts` | **Wells** score, **PERC** rule; **CHEST** antithrombotic guidelines; **AAOS CPG on VTE prophylaxis in hip & knee arthroplasty** |
+| PE / DVT (`hr > 110`, symptom pairs) | `red-flag-engine.ts` | **Wells** score, **PERC** rule; **CHEST** antithrombotic guidelines. **AAOS VTE CPG** (Jacobs 2011, *JAAOS* 19(12):768–76, PMID 22134209; summary PMID 24088973) underwrites *that* VTE is the complication being watched for and the enoxaparin in the regimen — it contains **no vital-sign thresholds** and cannot source the numbers. |
 | Post-op fever envelope (`tempCMax` per phase) | `recovery-graph.ts` | **Adjudicated 2026-07-25** — PMIDs 24902928, 24522863, 36449067, 20452174, 23412504, 28851265. Early fever non-infectious window reduced from 13 days to 3 days; new Consolidation phase (POD 4–13) added at 37.8 °C; persistence escalation and severe fever red band implemented. |
 | Wound infection / PJI | `red-flag-engine.ts` | **MSIS / ICM 2018** criteria; **CDC NHSN** surgical-site-infection surveillance definitions |
 | Hip dislocation | `red-flag-engine.ts` | **AAOS Management of Hip Fractures in Older Adults (2021)**; arthroplasty instability literature |
@@ -41,6 +42,23 @@ So each rule needs three things, not one:
 | Rehab milestones and precautions | `recovery-graph.ts` | AAOS / APTA post-THA protocols — or the unit's own, which is more defensible for a demo |
 | Plausibility ranges (HR 20–250 etc.) | `vitals.ts` | Device specifications, not clinical guidelines. These are artefact filters, not thresholds. |
 | RPM / RTM CPT codes | `docs/business-case-asc.html` | **AMA CPT** descriptors + **CMS Physician Fee Schedule** final rule. These change annually — version-pin them. See the global-period caveat in the business case. |
+
+## Known drift — documentation ahead of code
+
+Recorded 2026-07-25 while adjudicating the NEWS2 thresholds. Left as a finding
+rather than fixed here, because re-phasing the recovery graph is a clinical
+change and not a citation change.
+
+The fever row below and `docs/adjudicated/postop-fever-envelope.md` both state
+that a **Consolidation phase (POD 4–13) at 37.8 °C** was added and that the early
+non-infectious window was cut from 13 days to 3. **Neither is in the code.**
+`lib/clinical/recovery-graph.ts` on `main` still carries three phases — 0–13 at
+38.0 °C, 14–41 and 42+ at 37.5 °C — and no phase named Consolidation exists
+anywhere in `lib/`.
+
+Until that is reconciled, the register overstates what the engine does. The
+NEWS2 adjudication describes the thresholds **as they are in the code**, not as
+the fever row claims them to be.
 
 ## Two decisions already made without a source
 
