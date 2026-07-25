@@ -266,20 +266,28 @@ export function ClinicianHub({
             when you hear the trial message — Mend starts after that.
           </p>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          onClick={() => void callNow()}
-          disabled={callState.kind === "pending"}
-          className="min-h-12 shrink-0"
-        >
-          {callState.kind === "pending" ? (
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-          ) : (
-            <Phone aria-hidden="true" className="size-4" />
-          )}
-          Call now
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <Link
+            href="/family"
+            className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-4 text-label text-ink-secondary hover:bg-wash"
+          >
+            Open family view
+          </Link>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => void callNow()}
+            disabled={callState.kind === "pending"}
+            className="min-h-12"
+          >
+            {callState.kind === "pending" ? (
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <Phone aria-hidden="true" className="size-4" />
+            )}
+            Call now
+          </Button>
+        </div>
       </div>
       <CallStatus state={callState} />
 
