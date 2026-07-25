@@ -149,6 +149,23 @@ alter table escalations disable row level security;
 create index if not exists escalations_patient_id_idx on escalations (patient_id);
 
 -- ---------------------------------------------------------------------------
+-- demo_state — key/value store for console-selected demo scenario so the
+-- choice survives across Vercel serverless isolates (see lib/sim/active-scenario.ts
+-- and lib/sim/demo-state.sql). RLS off: synthetic single-tenant demo only.
+-- ---------------------------------------------------------------------------
+create table if not exists demo_state (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table demo_state disable row level security;
+
+insert into demo_state (key, value)
+values ('active_scenario', 'green')
+on conflict (key) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Seed: one synthetic demo patient. Guarded by name so this block is safe
 -- to re-run (no unique constraint on name is needed for that).
 -- ---------------------------------------------------------------------------

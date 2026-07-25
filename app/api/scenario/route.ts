@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
-  getActiveScenario,
   isScenario,
-  setActiveScenario,
+  loadActiveScenario,
+  persistActiveScenario,
   SCENARIO_META,
 } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
@@ -12,11 +12,13 @@ import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures
  *
  * Selecting a scenario makes it the active fixture fallback that
  * `/api/checkin` and `/api/triage` read when Supabase has no rows.
+ * Persist goes to Supabase `demo_state` when configured so other
+ * serverless isolates see the same selection; otherwise in-process only.
  * Never throws; malformed bodies get 400.
  */
 
 export async function GET(): Promise<NextResponse> {
-  const scenario = getActiveScenario();
+  const scenario = await loadActiveScenario();
   return NextResponse.json({
     scenario,
     meta: SCENARIO_META[scenario],
@@ -46,7 +48,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  setActiveScenario(scenario);
+  await persistActiveScenario(scenario);
   const now = new Date();
 
   return NextResponse.json({

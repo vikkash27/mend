@@ -76,7 +76,14 @@ describe("schema.sql", () => {
   const sql = readFileSync(join(__dirname, "schema.sql"), "utf-8");
 
   it("declares every table the brief requires with its exact name", () => {
-    for (const table of ["patients", "vitals", "ecg_readings", "checkins", "escalations"]) {
+    for (const table of [
+      "patients",
+      "vitals",
+      "ecg_readings",
+      "checkins",
+      "escalations",
+      "demo_state",
+    ]) {
       expect(sql).toMatch(new RegExp(`create table if not exists ${table}\\b`));
     }
   });
@@ -133,7 +140,8 @@ describe("schema.sql", () => {
   it("notes RLS is intentionally off and disables it on every table", () => {
     expect(sql.toLowerCase()).toContain("rls is intentionally left off");
     const disableCount = (sql.match(/disable row level security/g) ?? []).length;
-    expect(disableCount).toBe(5);
+    // patients, vitals, ecg_readings, checkins, escalations, demo_state
+    expect(disableCount).toBe(6);
   });
 
   it("seeds the synthetic demo patient with the exact required values", () => {

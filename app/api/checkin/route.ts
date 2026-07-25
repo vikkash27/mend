@@ -18,7 +18,7 @@ import {
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
 import { generateSbar } from "@/lib/llm/sbar";
-import { getActiveScenario } from "@/lib/sim/active-scenario";
+import { getActiveScenario, loadActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
 import { notifyCaregiver } from "@/lib/telephony/sms";
 
@@ -82,7 +82,7 @@ interface ClinicalContext {
  * (lib/db/queries.ts times out every read). */
 async function loadClinicalContext(): Promise<ClinicalContext> {
   const now = new Date();
-  const fallbackScenario = getActiveScenario();
+  const fallbackScenario = await loadActiveScenario();
   const fallback: ClinicalContext = {
     patientId: undefined,
     patientName: DEFAULT_PATIENT_FIRST_NAME,

@@ -5,7 +5,7 @@ import { DEFAULT_PATIENT_FIRST_NAME, firstName, scriptForDecision } from "@/lib/
 import type { Symptoms } from "@/lib/clinical/types";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { fetchDemoPatient, fetchLatestEcg, fetchLatestVitals } from "@/lib/db/queries";
-import { getActiveScenario } from "@/lib/sim/active-scenario";
+import { loadActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioVitals } from "@/lib/sim/fixtures";
 
 /**
@@ -142,7 +142,7 @@ interface LatestReadings {
  * "absent" per the task brief, not as an error. Never throws. */
 async function loadLatestReadings(): Promise<LatestReadings> {
   const now = new Date();
-  const fallbackScenario = getActiveScenario();
+  const fallbackScenario = await loadActiveScenario();
   const fallback: LatestReadings = {
     patientFirstName: DEFAULT_PATIENT_FIRST_NAME,
     vitals: scenarioVitals(fallbackScenario, now),

@@ -1,20 +1,26 @@
 import type { Scenario } from "./fixtures";
 
 /**
- * Process-local active demo scenario. The console selector writes here;
- * `/api/checkin`, `/api/triage`, `/family`, and `/call` read it when no
- * explicit query param overrides (and APIs fall back to fixtures with no
- * Supabase / empty tables).
+ * Active demo scenario. The console selector writes here; `/api/checkin`,
+ * `/api/triage`, `/family`, and `/call` read it when no explicit query
+ * param overrides (and APIs fall back to fixtures with no Supabase /
+ * empty tables).
  *
- * Stored on `globalThis` so Next.js's separate bundles for Route Handlers
- * and Server Components share one value in the same Node process. A plain
- * module `let` silently forks into two stores under Turbopack/webpack —
- * the console would update one and `/family` would read the other.
- * Still a single-process demo assumption, not a multi-instance production
- * store.
+ * Storage layers:
+ * 1. `globalThis` — shared across Route Handler / Server Component bundles
+ *    in one Node process (Turbopack/webpack otherwise fork module state).
+ * 2. Supabase `demo_state` row — durable across Vercel serverless isolates
+ *    when credentials + table are configured. See `demo-state.sql`.
+ *
+ * Sync `getActiveScenario` / `setActiveScenario` remain for call sites that
+ * cannot await (Server Components). API routes that need the cross-instance
+ * value must `await loadActiveScenario()` before reading, and
+ * `await persistActiveScenario()` when the console changes it.
  */
 
 const GLOBAL_KEY = "__mendActiveScenario" as const;
+const DEMO_STATE_KEY = "active_scenario";
+const SUPABASE_TIMEOUT_MS = 800;
 
 type MendGlobal = typeof globalThis & {
   [GLOBAL_KEY]?: Scenario;
@@ -54,5 +60,137 @@ export function getActiveScenario(): Scenario {
 
 export function setActiveScenario(scenario: Scenario): Scenario {
   store()[GLOBAL_KEY] = scenario;
+  return scenario;
+}
+
+function supabaseRestConfig(): { url: string; key: string } | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    return null;
+  }
+  return { url, key };
+}
+
+async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T | undefined> {
+  try {
+    return await Promise.race([
+      work,
+      new Promise<undefined>((resolve) => {
+        setTimeout(() => resolve(undefined), ms);
+      }),
+    ]);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Reads the durable scenario from Supabase `demo_state`, if configured.
+ * Never throws. Returns null when unconfigured, timed out, or the table /
+ * row is missing — callers keep the in-process value.
+ */
+async function readDurableScenario(): Promise<Scenario | null> {
+  const config = supabaseRestConfig();
+  if (!config) {
+    return null;
+  }
+
+  const result = await withTimeout(
+    (async () => {
+      const res = await fetch(
+        `${config.url}/rest/v1/demo_state?key=eq.${encodeURIComponent(DEMO_STATE_KEY)}&select=value`,
+        {
+          method: "GET",
+          headers: {
+            apikey: config.key,
+            Authorization: `Bearer ${config.key}`,
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        },
+      );
+      if (!res.ok) {
+        console.warn(
+          `[sim] demo_state read failed (HTTP ${res.status}) — using in-process scenario. ` +
+            "Ensure lib/sim/demo-state.sql has been applied.",
+        );
+        return null;
+      }
+      const rows = (await res.json()) as Array<{ value?: unknown }>;
+      const value = rows[0]?.value;
+      return isScenario(value) ? value : null;
+    })(),
+    SUPABASE_TIMEOUT_MS,
+  );
+
+  return result ?? null;
+}
+
+/**
+ * Upserts the durable scenario. Returns true when Supabase acknowledged the
+ * write; false when unconfigured, timed out, or the table is missing.
+ */
+async function writeDurableScenario(scenario: Scenario): Promise<boolean> {
+  const config = supabaseRestConfig();
+  if (!config) {
+    return false;
+  }
+
+  const result = await withTimeout(
+    (async () => {
+      const res = await fetch(`${config.url}/rest/v1/demo_state`, {
+        method: "POST",
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${config.key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify({
+          key: DEMO_STATE_KEY,
+          value: scenario,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        console.warn(
+          `[sim] demo_state write failed (HTTP ${res.status}) — in-process only. ` +
+            "Ensure lib/sim/demo-state.sql has been applied.",
+        );
+        return false;
+      }
+      return true;
+    })(),
+    SUPABASE_TIMEOUT_MS,
+  );
+
+  return result === true;
+}
+
+/**
+ * Hydrate the in-process store from Supabase when available, then return
+ * the active scenario. API routes that fall back to fixtures should call
+ * this before `getActiveScenario()`.
+ */
+export async function loadActiveScenario(): Promise<Scenario> {
+  const remote = await readDurableScenario();
+  if (remote) {
+    return setActiveScenario(remote);
+  }
+  return getActiveScenario();
+}
+
+/**
+ * Set the active scenario in-process and, when Supabase is configured,
+ * persist it so other serverless isolates see the same selection.
+ */
+export async function persistActiveScenario(scenario: Scenario): Promise<Scenario> {
+  setActiveScenario(scenario);
+  // Best-effort durable write. Failures are logged inside writeDurableScenario;
+  // unconfigured Supabase is intentional for local/dev (in-process only).
+  await writeDurableScenario(scenario);
   return scenario;
 }
