@@ -13,7 +13,7 @@ import { fetchDemoPatient } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { buildFallbackSbar } from "@/lib/llm/sbar";
 import { familyRecallSummary } from "@/lib/memory/last-checkin";
-import { getActiveScenario } from "@/lib/sim/active-scenario";
+import { loadActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals, type Scenario } from "@/lib/sim/fixtures";
 import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
 
@@ -159,7 +159,8 @@ export default async function FamilyPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const scenario = resolveFamilyScenario(first(params.state), getActiveScenario());
+  const activeScenario = await loadActiveScenario();
+  const scenario = resolveFamilyScenario(first(params.state), activeScenario);
 
   const state = loadState(scenario);
   const copy = familyCopy(state.decision, state.findings);

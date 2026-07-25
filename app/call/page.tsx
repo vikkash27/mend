@@ -9,7 +9,7 @@ import { evaluateTrends } from "@/lib/clinical/trends";
 import { fetchDemoPatient } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { lastCheckinSummary } from "@/lib/memory/last-checkin";
-import { getActiveScenario } from "@/lib/sim/active-scenario";
+import { loadActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals } from "@/lib/sim/fixtures";
 import { resolveCallStage } from "@/lib/sim/resolve-demo";
 
@@ -120,7 +120,7 @@ export default async function CallPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const activeScenario = getActiveScenario();
+  const activeScenario = await loadActiveScenario();
   const stageParam = first(params.stage);
   const hasExplicitStage =
     stageParam === "monitoring" || stageParam === "checking" || stageParam === "escalated";
