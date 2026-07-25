@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { landingCopy, PRODUCT_SURFACES } from "./copy";
 import { useLandingMotion } from "./motion";
+import { SurfacePreviews } from "./SurfacePreviews";
 
 export function Surfaces() {
   const { fadeUp, staggerContainer, viewportOnce, reduce, initial } =
@@ -13,7 +14,7 @@ export function Surfaces() {
   return (
     <section
       id="product"
-      className="scroll-mt-8 border-t border-line px-6 py-20 sm:px-10 sm:py-28 lg:px-14"
+      className="scroll-mt-8 border-t border-line px-6 py-14 sm:px-10 sm:py-16 lg:px-14 lg:py-20"
     >
       <motion.div
         className="mx-auto max-w-6xl"
@@ -33,11 +34,20 @@ export function Surfaces() {
         </motion.h2>
         <motion.p
           variants={fadeUp}
-          className="mt-4 max-w-xl font-serif text-lede text-ink-secondary"
+          className="mt-4 max-w-xl text-body-lg text-ink-secondary"
         >
           {c.support}
         </motion.p>
-        <nav aria-label="Product surfaces" className="mt-12 flex flex-col">
+
+        <SurfacePreviews />
+
+        <motion.p
+          variants={fadeUp}
+          className="mt-16 eyebrow text-ink-tertiary"
+        >
+          Deep links
+        </motion.p>
+        <nav aria-label="Product surfaces" className="mt-4 flex flex-col">
           {PRODUCT_SURFACES.map((surface) => (
             <motion.div key={surface.href} variants={fadeUp}>
               <Link

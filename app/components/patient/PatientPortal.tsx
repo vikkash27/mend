@@ -3,6 +3,8 @@
 import { Loader2, Phone } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { MendMark } from "@/app/components/brand/MendMark";
+import { PhoneFrame } from "@/app/components/device/PhoneFrame";
 import { MedicalAdviceDisclaimer } from "@/app/components/MedicalAdviceDisclaimer";
 import { Button } from "@/components/ui/button";
 import { SeverityChip } from "@/components/ui/severity-chip";
@@ -22,6 +24,8 @@ export interface PatientPortalProps {
   level: Severity;
   headline: string;
   lede: string;
+  /** Phone chrome on md+. False when `?frame=0`. */
+  framed?: boolean;
 }
 
 function CallStatus({ state }: { state: CallActionState }) {
@@ -52,6 +56,7 @@ export function PatientPortal({
   level,
   headline,
   lede,
+  framed = true,
 }: PatientPortalProps) {
   const [callState, setCallState] = useState<CallActionState>({ kind: "idle" });
 
@@ -96,62 +101,65 @@ export function PatientPortal({
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16">
-      <p className="font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
-        Mend &middot; Your recovery
-      </p>
-
-      <p className="pt-8 text-lg text-ink-secondary">
-        {patientName} · day {dayPostOp} after {procedure.toLowerCase()}
-      </p>
-
-      <div className="pt-8">
-        <SeverityChip level={level} size="lg" />
-      </div>
-
-      <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
-        {headline}
-      </h1>
-
-      <p className="pt-5 font-serif text-lede text-ink">{lede}</p>
-
-      <div className="flex flex-col gap-3 pt-10">
-        <Button
-          type="button"
-          size="lg"
-          onClick={() => void requestCheckIn()}
-          disabled={callState.kind === "pending"}
-          className="min-h-14 w-full rounded-xl text-lg"
-        >
-          {callState.kind === "pending" ? (
-            <Loader2 aria-hidden="true" className="size-5 animate-spin" />
-          ) : (
-            <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
-          )}
-          Request a check-in call
-        </Button>
-        <Link
-          href="/family"
-          className="flex min-h-14 items-center justify-center rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
-        >
-          Open family updates
-        </Link>
-      </div>
-
-      <CallStatus state={callState} />
-
-      <p className="pt-6 text-lg text-ink-secondary">
-        <span className="font-medium text-ink">Twilio trial:</span> answer on
-        speaker, then <span className="font-medium text-ink">press any key</span>{" "}
-        when you hear the trial message — Mend starts after that.
-      </p>
-
-      <div className="mt-auto pt-16">
-        <p className="text-lg text-ink-tertiary">
-          Mend can call you now when you ask, and every morning.
+    <PhoneFrame framed={framed} stage>
+      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-12 pb-10 sm:pt-16 md:min-h-0 md:pt-14">
+        <p className="flex items-center gap-2 font-sans text-family-eyebrow font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+          <MendMark size="sm" className="text-ink" />
+          Mend &middot; Your recovery
         </p>
-        <MedicalAdviceDisclaimer tone="family" className="pt-6" />
-      </div>
-    </main>
+
+        <p className="pt-8 text-lg text-ink-secondary">
+          {patientName} · day {dayPostOp} after {procedure.toLowerCase()}
+        </p>
+
+        <div className="pt-8">
+          <SeverityChip level={level} size="lg" />
+        </div>
+
+        <h1 className="pt-6 font-heading text-heading text-balance sm:text-title">
+          {headline}
+        </h1>
+
+        <p className="pt-5 font-serif text-lede text-ink">{lede}</p>
+
+        <div className="flex flex-col gap-3 pt-10">
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => void requestCheckIn()}
+            disabled={callState.kind === "pending"}
+            className="min-h-14 w-full rounded-xl text-lg"
+          >
+            {callState.kind === "pending" ? (
+              <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+            ) : (
+              <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
+            )}
+            Request a check-in call
+          </Button>
+          <Link
+            href="/family"
+            className="flex min-h-14 items-center justify-center rounded-xl border border-line-strong bg-raised text-lg font-medium text-ink"
+          >
+            Open family updates
+          </Link>
+        </div>
+
+        <CallStatus state={callState} />
+
+        <p className="pt-6 text-lg text-ink-secondary">
+          <span className="font-medium text-ink">Twilio trial:</span> answer on
+          speaker, then <span className="font-medium text-ink">press any key</span>{" "}
+          when you hear the trial message — Mend starts after that.
+        </p>
+
+        <div className="mt-auto pt-16">
+          <p className="text-lg text-ink-tertiary">
+            Mend can call you now when you ask, and every morning.
+          </p>
+          <MedicalAdviceDisclaimer tone="family" className="pt-6" />
+        </div>
+      </main>
+    </PhoneFrame>
   );
 }

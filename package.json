@@ -10,7 +10,8 @@
     "test": "vitest run",
     "posttest": "tsx scripts/export-vignettes.ts",
     "test:watch": "vitest",
-    "vignettes": "tsx scripts/export-vignettes.ts"
+    "vignettes": "tsx scripts/export-vignettes.ts",
+    "capture:landing": "node scripts/capture-landing-clips.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

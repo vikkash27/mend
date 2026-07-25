@@ -14,6 +14,7 @@ import {
 } from "@/lib/sim/live-call";
 import type { RosterPatient } from "@/lib/sim/roster";
 import { cn } from "@/lib/utils";
+import { ChartNotes } from "./ChartNotes";
 import { HubOpsPanel } from "./HubOpsPanel";
 import { LatestReading } from "./LatestReading";
 import { Panel, SectionHeading } from "./ClinicianShell";
@@ -148,6 +149,12 @@ function ChartSummary({
           </div>
         </Panel>
       </div>
+
+      <ChartNotes
+        patientId={patient.id}
+        patientName={patient.name}
+        compact
+      />
     </div>
   );
 }

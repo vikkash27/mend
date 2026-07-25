@@ -40,6 +40,24 @@ export const landingCopy = {
       },
     ],
   },
+  devices: {
+    eyebrow: "Device integrations",
+    title: "Give clinicians the signals they need without another app.",
+    support:
+      "A Kardia PDF lands on the chart when uploaded. A patient’s watch streams heart rate through their phone to the clinician hub in realtime — same numbers, same engine, no re-typing.",
+    kardia: {
+      title: "KardiaMobile 6L",
+      benefit: "PDF upload writes rhythm and BPM onto the patient chart immediately.",
+      body: "Drop the Kardia export into Ops. Mend pulls the FDA-cleared determination and BPM onto Margaret’s dashboard and into the red-flag engine — no separate PDF viewer, no waiting for someone to re-type numbers.",
+      note: "AliveCor KardiaMobile 6L · PDF export · determination as printed",
+    },
+    watch: {
+      title: "Patient watch → clinician chart",
+      benefit: "Margaret’s live HR on her phone is the same BPM the doctor sees — updating together.",
+      body: "Her Garmin (or any standard Bluetooth HR watch) broadcasts during an activity. Mend’s patient surface mirrors that BPM, and the clinician hub chart stays in sync in realtime so drift shows up while the check-in is still open.",
+      note: "Web Bluetooth · Heart Rate Service · fail-safe if contact is lost",
+    },
+  },
   trust: {
     eyebrow: "Why trust it",
     title: "Clinical rigor you can inspect.",
@@ -60,10 +78,10 @@ export const landingCopy = {
     ],
   },
   surfaces: {
-    eyebrow: "Also available",
-    title: "Quiet deep links for the demo.",
+    eyebrow: "See the seats",
+    title: "One morning event. Three audiences.",
     support:
-      "The hub and patient portal are the product entries. These remain for judges who want a specific seat.",
+      "The clinician hub is the working surface. Family and patient phones reflect the same decision in plain language.",
   },
   close: {
     title: "Built for the hardest week after surgery.",

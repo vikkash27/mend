@@ -10,7 +10,7 @@ export function Trust() {
   const c = landingCopy.trust;
 
   return (
-    <section className="border-t border-line px-6 py-20 sm:px-10 sm:py-28 lg:px-14">
+    <section className="border-t border-line px-6 py-14 sm:px-10 sm:py-16 lg:px-14 lg:py-20">
       <motion.div
         className="mx-auto max-w-6xl"
         variants={staggerContainer}
@@ -23,22 +23,24 @@ export function Trust() {
         </motion.p>
         <motion.h2
           variants={fadeUp}
-          className="mt-4 max-w-2xl font-heading text-heading tracking-tight text-ink"
+          className="mt-3 max-w-3xl font-heading text-heading tracking-tight text-ink sm:text-title"
         >
           {c.title}
         </motion.h2>
         <motion.p
           variants={fadeUp}
-          className="mt-4 max-w-xl font-serif text-lede text-ink-secondary"
+          className="mt-3 max-w-2xl text-body-lg text-ink-secondary"
         >
           {c.support}
         </motion.p>
-        <ul className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+        <ul className="mt-8 grid gap-3 md:grid-cols-3 md:gap-4">
           {c.points.map((point) => (
             <motion.li
               key={point.title}
               variants={fadeUp}
-              className="border-t border-line pt-6"
+              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 360, damping: 22 }}
+              className="rounded-2xl border border-line bg-raised p-5 shadow-[0_14px_32px_-24px_rgba(28,25,23,0.35)]"
             >
               <h3 className="font-heading text-subhead text-ink">{point.title}</h3>
               <p className="mt-3 text-body text-ink-secondary">{point.body}</p>
