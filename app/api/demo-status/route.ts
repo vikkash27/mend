@@ -27,6 +27,8 @@ export async function GET(): Promise<NextResponse> {
     present(process.env.TWILIO_AUTH_TOKEN) &&
     present(process.env.TWILIO_FROM_NUMBER);
   const demoPatientPhone = present(process.env.DEMO_PATIENT_PHONE);
+  const amplifier =
+    present(process.env.AMPLIFIER_API_KEY) && present(process.env.AMPLIFIER_ACCOUNT_ID);
 
   const missing: string[] = [];
   if (!anthropic) missing.push("ANTHROPIC_API_KEY");
@@ -47,6 +49,10 @@ export async function GET(): Promise<NextResponse> {
     if (!present(process.env.TWILIO_FROM_NUMBER)) missing.push("TWILIO_FROM_NUMBER");
   }
   if (!demoPatientPhone) missing.push("DEMO_PATIENT_PHONE");
+  if (!amplifier) {
+    if (!present(process.env.AMPLIFIER_API_KEY)) missing.push("AMPLIFIER_API_KEY");
+    if (!present(process.env.AMPLIFIER_ACCOUNT_ID)) missing.push("AMPLIFIER_ACCOUNT_ID");
+  }
 
   return NextResponse.json({
     anthropic,
@@ -54,6 +60,7 @@ export async function GET(): Promise<NextResponse> {
     elevenlabs,
     twilio,
     demoPatientPhone,
+    amplifier,
     missing,
   });
 }
