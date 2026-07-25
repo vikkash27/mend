@@ -127,6 +127,42 @@ async function loadClinicalContext(): Promise<ClinicalContext> {
   }
 }
 
+/**
+ * Writes the caregiver-SMS audit fact immediately after a successful send,
+ * in its own try/catch, before vitals/checkin persistence. The dangerous
+ * failure direction is "SMS went out, escalations.notified_caregiver_at is
+ * null" — that invites a duplicate text or a clinician concluding the
+ * family was never contacted.
+ */
+async function recordCaregiverNotified(args: {
+  patientId: string | undefined;
+  level: Exclude<ReturnType<typeof composeDecision>["level"], "green">;
+  condition: string | null;
+  notifiedAt: string;
+}): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase || !args.patientId) {
+    console.warn(
+      "[api/checkin] cannot durable-record caregiver notification — Supabase unavailable or demo patient not found.",
+    );
+    return false;
+  }
+
+  try {
+    await insertEscalation(supabase, {
+      patient_id: args.patientId,
+      checkin_id: null,
+      level: args.level,
+      condition: args.condition,
+      notified_caregiver_at: args.notifiedAt,
+    });
+    return true;
+  } catch (err) {
+    console.warn("[api/checkin] failed to durable-record caregiver notification:", err);
+    return false;
+  }
+}
+
 async function persist(args: {
   patientId: string | undefined;
   dayPostOp: number;
@@ -140,6 +176,9 @@ async function persist(args: {
    * check-in, so `escalations.notified_caregiver_at` can distinguish a
    * first send from a later resend. */
   notifiedCaregiverAt: string | null;
+  /** When true, the SMS audit row was already written; skip a second
+   * escalation insert so we do not double-count the notification. */
+  notificationAlreadyRecorded: boolean;
 }): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase || !args.patientId) {
@@ -147,6 +186,7 @@ async function persist(args: {
     return;
   }
 
+  let checkinId: string | undefined;
   try {
     const painScore =
       typeof args.symptoms.painScore === "number"
@@ -173,7 +213,7 @@ async function persist(args: {
       quality: args.vitals.quality,
     });
 
-    const checkinId = await insertCheckin(supabase, {
+    checkinId = await insertCheckin(supabase, {
       patient_id: args.patientId,
       day_post_op: args.dayPostOp,
       transcript: args.transcript,
@@ -183,8 +223,13 @@ async function persist(args: {
       trend_findings: args.trendFindings,
       sbar: args.sbar,
     });
+  } catch (err) {
+    console.warn("[api/checkin] failed to persist vitals/checkin:", err);
+  }
 
-    if (args.decision.level !== "green") {
+  // Escalation audit is independent of the vitals/checkin write above.
+  if (args.decision.level !== "green" && !args.notificationAlreadyRecorded) {
+    try {
       await insertEscalation(supabase, {
         patient_id: args.patientId,
         checkin_id: checkinId ?? null,
@@ -192,9 +237,9 @@ async function persist(args: {
         condition: args.decision.condition ?? null,
         notified_caregiver_at: args.notifiedCaregiverAt,
       });
+    } catch (err) {
+      console.warn("[api/checkin] failed to persist escalation:", err);
     }
-  } catch (err) {
-    console.warn("[api/checkin] failed to persist checkin/escalation:", err);
   }
 }
 
@@ -250,10 +295,19 @@ export async function POST(request: Request): Promise<NextResponse> {
   // destination number is configured (patient.caregiverPhone or the
   // DEMO_CAREGIVER_PHONE fallback inside notifyCaregiver itself).
   let notifiedCaregiverAt: string | null = null;
+  let notificationAlreadyRecorded = false;
   if (composed.level !== "green" && sbar !== null) {
     const notifyResult = await notifyCaregiver({ name: patientName, caregiverPhone }, composed, sbar);
     if (notifyResult.status === "sent") {
       notifiedCaregiverAt = new Date().toISOString();
+      // Durable BEFORE vitals/checkin writes — never suppress the SMS if
+      // this audit insert fails; just try again inside persist.
+      notificationAlreadyRecorded = await recordCaregiverNotified({
+        patientId,
+        level: composed.level,
+        condition: composed.condition ?? null,
+        notifiedAt: notifiedCaregiverAt,
+      });
     } else if (notifyResult.status === "error") {
       console.warn("[api/checkin] notifyCaregiver failed:", notifyResult.reason);
     }
@@ -269,6 +323,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     trendFindings,
     sbar,
     notifiedCaregiverAt,
+    notificationAlreadyRecorded,
   });
 
   return NextResponse.json({
