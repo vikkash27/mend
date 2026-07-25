@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TREND_ESCALATION_RULE_ID } from "../clinical/compose";
 import type { Decision, Symptoms, VitalsReading } from "../clinical/types";
 
 const ENV_KEYS = [
@@ -6,6 +10,12 @@ const ENV_KEYS = [
   "AMPLIFIER_API_KEY",
   "AMPLIFIER_ACCOUNT_ID",
 ] as const;
+
+const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+
+function loadFixture(name: string): unknown {
+  return JSON.parse(readFileSync(join(fixturesDir, name), "utf8"));
+}
 
 const AUDIO_URL =
   "https://api.elevenlabs.io/v1/convai/conversations/conv_test/audio";
@@ -252,6 +262,124 @@ describe("analyzeCheckinVoiceBiomarkers", () => {
     expect(result.decision.level).toBe("amber");
     expect(result.decision.firedRules).toContain("voice.cognitive_high");
     expect(result.decisionChanged).toBe(true);
+  });
+
+  it("never demotes prior red when voice re-eval only reaches amber", async () => {
+    setAllCredentials();
+    const { analyzeCheckinVoiceBiomarkers } = await freshModule();
+    const prior: Decision = {
+      level: "red",
+      condition: "Possible pulmonary embolism",
+      action: "Call 911 now.",
+      call: "911",
+      rationale: ["Sudden breathlessness with low SpO2."],
+      firedRules: ["pe.breathless_low_spo2"],
+    };
+
+    const fetchImpl = fakeFetch((url, init) => {
+      if (url === AUDIO_URL) {
+        return new Response(new Uint8Array([1, 2, 3, 4]), {
+          status: 200,
+          headers: { "Content-Type": "audio/wav" },
+        });
+      }
+      if (url === ANALYZE_URL && init.method === "POST") {
+        const form = init.body as FormData;
+        const domain = String(form.get("use_case"));
+        return new Response(
+          JSON.stringify({ job_id: `job-${domain}`, status: "queued" }),
+          { status: 200 },
+        );
+      }
+      if (url === JOB_URL("job-respiratory")) {
+        return new Response(
+          JSON.stringify({
+            status: "done",
+            result: domainResult("low", "COPD"),
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === JOB_URL("job-cognitive")) {
+        return new Response(
+          JSON.stringify({
+            status: "done",
+            result: domainResult("high", "Cognitive Impairment"),
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+
+    const result = await analyzeCheckinVoiceBiomarkers(
+      baselineArgs({
+        priorDecision: prior,
+        fetchImpl,
+        // Same inputs as a PE check-in would have already decided red.
+        symptoms: { breathless: true },
+      }),
+    );
+
+    // Voice alone would be amber; severity floor keeps prior red.
+    expect(result.record.status).toBe("ready");
+    expect(result.decision).toEqual(prior);
+    expect(result.decision.level).toBe("red");
+    expect(result.decisionChanged).toBe(false);
+  });
+
+  it("keeps prior amber (trend-raised) + decisionChanged=false on inconclusive mapped fixtures", async () => {
+    setAllCredentials();
+    const { analyzeCheckinVoiceBiomarkers } = await freshModule();
+    const prior: Decision = {
+      level: "amber",
+      condition: "Gradual change in heart rate",
+      action:
+        "Contact the nurse line today — a gradual change in your readings needs a closer look.",
+      call: "nurse_line",
+      rationale: [
+        "No red-flag rules fired.",
+        "Heart rate has been climbing across recent readings.",
+      ],
+      firedRules: [TREND_ESCALATION_RULE_ID],
+    };
+
+    const respiratoryFixture = loadFixture("sample-job-done.json");
+    const cognitiveFixture = loadFixture("sample-cognitive-done.json");
+
+    const fetchImpl = fakeFetch((url, init) => {
+      if (url === AUDIO_URL) {
+        return new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "Content-Type": "audio/wav" },
+        });
+      }
+      if (url === ANALYZE_URL && init.method === "POST") {
+        const form = init.body as FormData;
+        const domain = String(form.get("use_case"));
+        return new Response(
+          JSON.stringify({ job_id: `job-${domain}`, status: "queued" }),
+          { status: 200 },
+        );
+      }
+      if (url === JOB_URL("job-respiratory")) {
+        return new Response(JSON.stringify(respiratoryFixture), { status: 200 });
+      }
+      if (url === JOB_URL("job-cognitive")) {
+        return new Response(JSON.stringify(cognitiveFixture), { status: 200 });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+
+    const result = await analyzeCheckinVoiceBiomarkers(
+      baselineArgs({ priorDecision: prior, fetchImpl }),
+    );
+
+    expect(result.record.status).toBe("ready");
+    expect(result.record.mapped?.quality).toBe("insufficient");
+    expect(result.decision).toEqual(prior);
+    expect(result.decision.level).toBe("amber");
+    expect(result.decisionChanged).toBe(false);
   });
 
   it("on success keeps priorDecision and decisionChanged=false when level and firedRules match", async () => {

@@ -3,13 +3,16 @@ import { evaluate } from "../clinical/red-flag-engine";
 import type {
   Decision,
   EcgReading,
+  Severity,
   Symptoms,
   VitalsReading,
 } from "../clinical/types";
 import { fetchConversationAudio } from "../telephony/elevenlabs-recording";
 import { pollJob, submitAnalyze } from "./client";
 import { mapAmplifierResults } from "./map-to-engine";
-import type { VoiceBiomarkersRecord } from "./types";
+import type { VoiceBiomarkers, VoiceBiomarkersRecord } from "./types";
+
+const LEVEL_RANK: Record<Severity, number> = { green: 0, amber: 1, red: 2 };
 
 function firedRulesDiffer(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return true;
@@ -18,6 +21,36 @@ function firedRulesDiffer(a: string[], b: string[]): boolean {
 
 function decisionsDiffer(a: Decision, b: Decision): boolean {
   return a.level !== b.level || firedRulesDiffer(a.firedRules, b.firedRules);
+}
+
+function hasVoiceRule(firedRules: string[]): boolean {
+  return firedRules.some((id) => id.startsWith("voice."));
+}
+
+/**
+ * Never demote below priorDecision. On insufficient/inconclusive quality or
+ * when no voice rules fire, keep the check-in's prior verdict (trends may
+ * have raised it; re-eval here composes with empty trends).
+ */
+function resolveDecisionAfterVoice(args: {
+  priorDecision: Decision;
+  candidate: Decision;
+  mappedQuality: VoiceBiomarkers["quality"];
+}): { decision: Decision; decisionChanged: boolean } {
+  const { priorDecision, candidate, mappedQuality } = args;
+  const demotes =
+    LEVEL_RANK[candidate.level] < LEVEL_RANK[priorDecision.level];
+  const keepPrior =
+    mappedQuality !== "ok" || !hasVoiceRule(candidate.firedRules) || demotes;
+
+  if (keepPrior) {
+    return { decision: priorDecision, decisionChanged: false };
+  }
+
+  return {
+    decision: candidate,
+    decisionChanged: decisionsDiffer(candidate, priorDecision),
+  };
 }
 
 function failOpen(args: {
@@ -150,8 +183,12 @@ export async function analyzeCheckinVoiceBiomarkers(args: {
   });
 
   // Caller supplies no trends here; compose with empty list (no-op unless green+findings).
-  const decision = composeDecision(evaluated, []);
-  const decisionChanged = decisionsDiffer(decision, args.priorDecision);
+  const candidate = composeDecision(evaluated, []);
+  const { decision, decisionChanged } = resolveDecisionAfterVoice({
+    priorDecision: args.priorDecision,
+    candidate,
+    mappedQuality: mapped.quality,
+  });
 
   const record: VoiceBiomarkersRecord = {
     status: "ready",
