@@ -11,6 +11,7 @@ const PRODUCT_SURFACES = [
   "app/components/landing/Close.tsx",
   "app/components/call/CallStage.tsx",
   "app/family/page.tsx",
+  "app/components/patient/PatientPortal.tsx",
   "app/components/clinician/ClinicianShell.tsx",
   "app/console/DemoConsole.tsx",
 ] as const;
