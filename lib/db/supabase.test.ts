@@ -140,8 +140,9 @@ describe("schema.sql", () => {
   it("notes RLS is intentionally off and disables it on every table", () => {
     expect(sql.toLowerCase()).toContain("rls is intentionally left off");
     const disableCount = (sql.match(/disable row level security/g) ?? []).length;
-    // patients, vitals, ecg_readings, checkins, escalations, demo_state
-    expect(disableCount).toBe(6);
+    // patients, vitals, ecg_readings, checkins, escalations, demo_state,
+    // medications, medication_administrations, prn_requests
+    expect(disableCount).toBe(9);
   });
 
   it("seeds the synthetic demo patient with the exact required values", () => {
