@@ -16,7 +16,7 @@ export function LandingNav() {
         href={talkToUsHref()}
         className="min-h-11 inline-flex items-center text-label text-ink-secondary transition-colors hover:text-ink"
       >
-        {landingCopy.secondaryCta}
+        {landingCopy.contactCta}
       </a>
     </header>
   );

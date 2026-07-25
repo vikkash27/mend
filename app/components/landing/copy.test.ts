@@ -13,14 +13,23 @@ describe("landing copy honesty", () => {
     expect(blob).not.toMatch(/\bNHS\b|\bMum\b|\bring the\b/i);
   });
 
-  it("exposes the four product surfaces with real routes", () => {
-    const hrefs = PRODUCT_SURFACES.map((s) => s.href);
-    expect(hrefs).toEqual(
-      expect.arrayContaining(["/call", "/family", "/clinician", "/clinician/engine"]),
-    );
+  it("points primary and secondary CTAs at clinician hub and patient portal", () => {
+    expect(landingCopy.primaryCta).toBe("Open clinician hub");
+    expect(landingCopy.secondaryCta).toBe("Patient portal");
+    expect(landingCopy.primaryHref).toBe("/clinician");
+    expect(landingCopy.secondaryHref).toBe("/patient");
   });
 
-  it("builds a mailto for Talk to us", () => {
+  it("keeps optional quiet deep links for judges", () => {
+    const hrefs = PRODUCT_SURFACES.map((s) => s.href);
+    expect(hrefs).toEqual(
+      expect.arrayContaining(["/clinician", "/patient", "/family", "/clinician/engine"]),
+    );
+    expect(PRODUCT_SURFACES.every((s) => s.quiet)).toBe(true);
+  });
+
+  it("builds a mailto for Talk to us in nav/footer", () => {
+    expect(landingCopy.contactCta).toBe("Talk to us");
     expect(LANDING_CONTACT_EMAIL).toMatch(/@/);
     expect(talkToUsHref()).toMatch(/^mailto:/);
     expect(talkToUsHref()).toContain(LANDING_CONTACT_EMAIL);

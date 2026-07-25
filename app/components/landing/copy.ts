@@ -3,8 +3,11 @@ export const landingCopy = {
   headline: "Recovery doesn’t end at discharge.",
   support:
     "Voice check-ins at home. A deterministic clinical engine. The right person notified when something drifts.",
-  primaryCta: "See the product",
-  secondaryCta: "Talk to us",
+  primaryCta: "Open clinician hub",
+  primaryHref: "/clinician",
+  secondaryCta: "Patient portal",
+  secondaryHref: "/patient",
+  contactCta: "Talk to us",
   gap: {
     eyebrow: "The gap",
     title: "After discharge, everyone loses the plot.",
@@ -57,9 +60,10 @@ export const landingCopy = {
     ],
   },
   surfaces: {
-    eyebrow: "Product",
-    title: "See Mend from every seat.",
-    support: "Live call, family update, clinician worklist — one engine underneath.",
+    eyebrow: "Also available",
+    title: "Quiet deep links for the demo.",
+    support:
+      "The hub and patient portal are the product entries. These remain for judges who want a specific seat.",
   },
   close: {
     title: "Built for the hardest week after surgery.",
@@ -68,10 +72,26 @@ export const landingCopy = {
   },
 } as const;
 
+/** Optional quiet deep links — not the primary conversion path. */
 export const PRODUCT_SURFACES = [
-  { href: "/call", label: "Live call", note: "Voice check-in on stage" },
-  { href: "/family", label: "Family", note: "Caregiver morning update" },
-  { href: "/clinician", label: "Clinician", note: "Recovery worklist" },
+  {
+    href: "/clinician",
+    label: "Clinician hub",
+    note: "Daily worklist and live call",
+    quiet: true,
+  },
+  {
+    href: "/patient",
+    label: "Patient portal",
+    note: "Request a check-in call",
+    quiet: true,
+  },
+  {
+    href: "/family",
+    label: "Family",
+    note: "Caregiver morning update",
+    quiet: true,
+  },
   {
     href: "/clinician/engine",
     label: "Rule engine",
