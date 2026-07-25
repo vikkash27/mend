@@ -61,7 +61,7 @@ Configure Conversational AI agent linked to the imported Twilio number:
 |---|---|
 | Webhook / tool URL | `https://<prod-host>/api/triage` |
 | Method | `POST` |
-| Auth header | shared secret matching `TRIAGE_WEBHOOK_SECRET` (header name as implemented by `/api/triage`) |
+| Auth header | `x-triage-webhook-secret: <TRIAGE_WEBHOOK_SECRET>` (exact header name in `app/api/triage/route.ts`) |
 | Timeout | ≥ 10s; disable interruption during tool |
 | Pre-tool speech | short filler so silence is not dead air |
 | Prompt rule | Speak the returned `script` **verbatim**. Never invent green/amber/red or escalate on own judgement. US terms only (ER, 911, care team, nurse line). |
