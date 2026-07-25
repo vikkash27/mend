@@ -173,7 +173,7 @@ export function EscalationTakeover({
           </div>
         )}
         <p className="pt-3 text-center text-label" style={{ color: PAPER_DIM }}>
-          {target.detail} · Mend stays on the line until she has dialled
+          {target.detail} · Mend stays on the line until she has dialed
         </p>
       </motion.div>
 

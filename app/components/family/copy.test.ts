@@ -36,7 +36,7 @@ describe("familyCopy", () => {
     expect(decision.level).toBe("green");
 
     const copy = familyCopy(decision);
-    expect(copy.headline).toBe("Mum's doing well today.");
+    expect(copy.headline).toBe("Mom's doing well today.");
     expect(copy.whatHappened).toBeUndefined();
     expect(copy.whatMendAsked).toBeUndefined();
   });
@@ -48,7 +48,7 @@ describe("familyCopy", () => {
     const copy = familyCopy(decision, findings);
     expect(copy.whatHappened).toContain("heart rate has been creeping up");
     expect(copy.whatHappened).toContain("not an emergency");
-    expect(copy.whatMendAsked).toContain("ring the nurse line today");
+    expect(copy.whatMendAsked).toContain("call the nurse line today");
   });
 
   it("amber copy carries no numbers, thresholds, rule ids or clinical shorthand", () => {
@@ -72,7 +72,7 @@ describe("familyCopy", () => {
     expect(decision.level).toBe("red");
 
     const copy = familyCopy(decision);
-    expect(copy.headline).toBe("Mum needs medical help right now.");
+    expect(copy.headline).toBe("Mom needs medical help right now.");
     expect(copy.whatHappened).toContain("blood clot in her lung");
     expect(copy.whatMendAsked).toContain("call 911 straight away");
   });

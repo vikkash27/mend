@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { callLength, clockTime, shortDate, signed, timeAgo } from "./format";
+import { callLength, clockTime, fullDate, shortDate, signed, timeAgo } from "./format";
 
 const NOW = new Date("2026-07-25T12:00:00.000Z");
 const minutesAgo = (n: number) =>
@@ -38,6 +38,14 @@ describe("timeAgo", () => {
 describe("clockTime", () => {
   it("uses a zero-padded 24-hour clock", () => {
     expect(clockTime("2026-07-25T08:05:00.000Z")).toMatch(/^\d{2}:\d{2}$/);
+  });
+});
+
+describe("shortDate / fullDate", () => {
+  it("formats month-first in en-US", () => {
+    // Fixed UTC noon avoids day-boundary drift across local timezones.
+    expect(shortDate("2026-07-25T12:00:00.000Z")).toBe("Jul 25");
+    expect(fullDate("2026-07-25T12:00:00.000Z")).toBe("Jul 25, 2026");
   });
 });
 

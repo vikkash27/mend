@@ -110,7 +110,7 @@ export function buildTimeline(input: TimelineInput): CallEvent[] {
       id: "t3",
       at: 22,
       speaker: "mend",
-      text: "That's good to hear. Have you been up and about with the frame today?",
+      text: "That's good to hear. Have you been up and about with the walker today?",
     },
     {
       kind: "turn",
@@ -197,7 +197,7 @@ export function buildTimeline(input: TimelineInput): CallEvent[] {
       id: "t9",
       at: 74,
       speaker: "margaret",
-      text: "Oh. Right. I'll ring them now.",
+      text: "Oh. Right. I'll call them now.",
     },
     {
       kind: "turn",

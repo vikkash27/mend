@@ -16,7 +16,7 @@ import type { Decision, TrendFinding } from "@/lib/clinical/types";
  */
 
 export interface FamilyCopy {
-  /** The one serif sentence that answers "is Mum all right?". */
+  /** The one serif sentence that answers "is Mom all right?". */
   headline: string;
   /** What happened, in plain words. Absent when everything is fine. */
   whatHappened?: string;
@@ -100,13 +100,13 @@ function amberWhatHappened(
 function whatMendAsked(decision: Decision): string {
   switch (decision.call) {
     case "911":
-      return "Mend told her to call 911 straight away, and stayed on the line while she dialled.";
+      return "Mend told her to call 911 straight away, and stayed on the line while she dialed.";
     case "ER":
       return "Mend told her to go to the emergency room straight away.";
     case "surgeon_office":
-      return "Mend asked her to ring the surgeon's office today.";
+      return "Mend asked her to call the surgeon's office today.";
     case "nurse_line":
-      return "Mend asked her to ring the nurse line today.";
+      return "Mend asked her to call the nurse line today.";
     default:
       return "Mend asked her to keep following her recovery plan.";
   }
@@ -118,16 +118,16 @@ export function familyCopy(
 ): FamilyCopy {
   switch (decision.level) {
     case "green":
-      return { headline: "Mum's doing well today." };
+      return { headline: "Mom's doing well today." };
     case "amber":
       return {
-        headline: "Mum's okay — one thing needs a look today.",
+        headline: "Mom's okay — one thing needs a look today.",
         whatHappened: amberWhatHappened(decision, trendFindings),
         whatMendAsked: whatMendAsked(decision),
       };
     case "red":
       return {
-        headline: "Mum needs medical help right now.",
+        headline: "Mom needs medical help right now.",
         whatHappened: decision.condition
           ? (RED_PLAIN[decision.condition] ?? RED_FALLBACK)
           : RED_FALLBACK,

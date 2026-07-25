@@ -64,7 +64,7 @@ export function ClinicianShell({
           </nav>
 
           <p className="numeric ml-auto hidden text-meta text-ink-tertiary lg:block">
-            Ridgeview Orthopaedics · nurse line
+            Ridgeview Orthopedics · nurse line
           </p>
         </div>
       </header>

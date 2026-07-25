@@ -20,7 +20,7 @@ import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
 /**
  * /family — the daughter's view, read on a phone at work.
  *
- * She has one question: "is Mum all right, or do I need to drive over?"
+ * She has one question: "is Mom all right, or do I need to drive over?"
  * Everything on this screen answers it; anything that doesn't is left off.
  * No vitals numbers, no rule ids, no thresholds — those live on the
  * clinician view. The level itself still comes from the deterministic
@@ -36,20 +36,20 @@ import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Mum's recovery — Mend",
+  title: "Mom's recovery — Mend",
   description: "A calm daily update on Margaret's recovery, from Mend's morning call.",
 };
 
 /** Matches the call view's synthetic patient (schema seed: surgery 4 days ago). */
 const DAY_POST_OP = 4;
 const PROCEDURE = "Hip hemiarthroplasty";
-/** Ofcom's fictional-drama mobile range; never a real number. */
-const MUM_TEL = "+447700900123";
+/** NANP 555 fictional range; never a real number. */
+const MOM_TEL = "+15550100123";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** What the fixtures don't model: same voice as the call timeline's turns. */
 const WELL_SUMMARY =
-  "She said the pain keeps easing, she slept through the night, and she's been up and about with her frame.";
+  "She said the pain keeps easing, she slept through the night, and she's been up and about with her walker.";
 
 interface FamilyState {
   decision: Decision;
@@ -100,7 +100,7 @@ function loadState(scenario: Scenario): FamilyState {
 
 function formatCallTime(date: Date): string {
   return date
-    .toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
     .replace(/\s/g, "\u00A0");
 }
 
@@ -124,8 +124,8 @@ function lastSevenDays(history: VitalsReading[], now: Date): CheckinDay[] {
     const day = new Date(now.getTime() - ago * MS_PER_DAY);
     days.push({
       key: localDayKey(day),
-      letter: day.toLocaleDateString("en-GB", { weekday: "narrow" }),
-      name: day.toLocaleDateString("en-GB", { weekday: "long" }),
+      letter: day.toLocaleDateString("en-US", { weekday: "narrow" }),
+      name: day.toLocaleDateString("en-US", { weekday: "long" }),
       checkedIn: checked.has(localDayKey(day)),
       isToday: ago === 0,
     });
@@ -180,7 +180,7 @@ export default async function FamilyPage({
       </h1>
 
       <p className="pt-5 text-lg text-ink-secondary">
-        Mend rang her today at <time>{formatCallTime(now)}</time>.
+        Mend called her today at <time>{formatCallTime(now)}</time>.
       </p>
 
       {copy.whatHappened ? (
@@ -193,11 +193,11 @@ export default async function FamilyPage({
 
           <div className="flex flex-col gap-3 pt-10">
             <a
-              href={`tel:${MUM_TEL}`}
+              href={`tel:${MOM_TEL}`}
               className="flex min-h-14 items-center justify-center gap-2.5 rounded-xl bg-ink text-lg font-medium text-paper"
             >
               <Phone aria-hidden="true" className="size-5" strokeWidth={2} />
-              Call Mum
+              Call Mom
             </a>
             <a
               href={forwardHref(state)}
@@ -214,7 +214,7 @@ export default async function FamilyPage({
 
       <div className="mt-auto pt-16">
         <CheckinStrip days={days} />
-        <p className="pt-8 text-lg text-ink-tertiary">Mend rings her every morning.</p>
+        <p className="pt-8 text-lg text-ink-tertiary">Mend calls her every morning.</p>
         <MedicalAdviceDisclaimer tone="family" className="pt-6" />
       </div>
     </main>

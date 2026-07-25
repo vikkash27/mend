@@ -3,27 +3,27 @@
  *
  * Everything here renders on the server and is never re-rendered on the
  * client, so a wall-clock value cannot drift between the two. Locale is
- * pinned to en-GB and the 24-hour clock throughout: a nurse line reads
- * "08:12", not "8:12 AM", and an ambiguous 07/08 date on a projector is a
- * clinical safety problem rather than a style preference.
+ * pinned to en-US (Market = United States) with a 24-hour clock throughout:
+ * a nurse line reads "08:12", not "8:12 AM", and month-first dates match
+ * what a US clinician expects on a projector.
  */
 
 const MS_PER_MINUTE = 60 * 1000;
 const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
-const TIME = new Intl.DateTimeFormat("en-GB", {
+const TIME = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
 });
 
-const DATE = new Intl.DateTimeFormat("en-GB", {
+const DATE = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
 });
 
-const DATE_FULL = new Intl.DateTimeFormat("en-GB", {
+const DATE_FULL = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -47,7 +47,7 @@ export function fullDate(iso: string): string {
 /**
  * How long ago, in the units a worklist is scanned in. Under an hour reads in
  * minutes, under a day in hours and minutes, beyond that in days — a nurse
- * deciding who to ring next never needs "1.4 days".
+ * deciding who to call next never needs "1.4 days".
  */
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const ms = Date.parse(iso);
