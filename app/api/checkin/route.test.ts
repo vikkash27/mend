@@ -40,29 +40,35 @@ describe("POST /api/checkin", () => {
     expect(res.status).toBe(400);
   });
 
+  // PREVIOUSLY WRONG: this test accepted green when Anthropic was unavailable,
+  // encoding the clinically unsafe bug where failed extraction looked like
+  // "patient reported nothing". With Fix 1, no client => symptomsUnusable =>
+  // amber (symptoms.extraction_failed), never green.
   it(
     "works end-to-end with no Supabase and no Anthropic credentials: " +
-      "returns a valid response shape with a null sbar on a green decision",
+      "fails safe to amber (never green) when extraction cannot run",
     async () => {
       const { POST } = await import("./route");
-      const res = await POST(makeRequest({ transcript: "I'm doing fine, pain is controlled." }));
+      const res = await POST(
+        makeRequest({
+          transcript: "I can't breathe and my chest hurts.",
+        }),
+      );
 
       expect(res.status).toBe(200);
       const json = await res.json();
 
       expect(json.decision).toBeDefined();
-      expect(["green", "amber", "red"]).toContain(json.decision.level);
+      expect(json.decision.level).not.toBe("green");
+      expect(json.decision.level).toBe("amber");
+      expect(json.decision.firedRules).toContain("symptoms.extraction_failed");
+      expect(json.decision.condition).toBe("Symptom extraction unavailable");
       expect(Array.isArray(json.trendFindings)).toBe(true);
       expect(json.phase).toBeDefined();
       expect(json.symptoms).toBeDefined();
       expect(json.vitals).toBeDefined();
       expect(json.ecg).toBeDefined();
-
-      if (json.decision.level === "green") {
-        expect(json.sbar).toBeNull();
-      } else {
-        expect(typeof json.sbar).toBe("string");
-      }
+      expect(typeof json.sbar).toBe("string");
     },
   );
 

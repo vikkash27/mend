@@ -269,10 +269,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const symptoms = await extractSymptoms(body.transcript);
+  const extraction = await extractSymptoms(body.transcript);
+  const symptoms = extraction.symptoms;
   const { patientId, patientName, procedure, caregiverPhone, vitals, ecg, history } = await loadClinicalContext();
 
-  const decision = evaluate({ dayPostOp, symptoms, vitals, ecg });
+  const decision = evaluate({
+    dayPostOp,
+    symptoms,
+    vitals,
+    ecg,
+    symptomsUnusable: !extraction.ok,
+  });
   const trendFindings = evaluateTrends(history, buildSymptomsHistory(history, symptoms), phase);
   const composed = composeDecision(decision, trendFindings);
 

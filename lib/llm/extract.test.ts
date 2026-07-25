@@ -51,9 +51,9 @@ describe("REPORT_SYMPTOMS_TOOL schema", () => {
 });
 
 describe("parseSymptomsMessage", () => {
-  it("returns an empty Symptoms object when Claude replies with no tool_use block", () => {
+  it("marks extraction failed when Claude replies with no tool_use block", () => {
     const message = fixtureMessage([fixtureTextBlock("I didn't call the tool.")]);
-    expect(parseSymptomsMessage(message)).toEqual({});
+    expect(parseSymptomsMessage(message)).toEqual({ ok: false, symptoms: {} });
   });
 
   it("extracts only the fields Claude explicitly set, ignoring unset ones", () => {
@@ -66,42 +66,66 @@ describe("parseSymptomsMessage", () => {
     ]);
 
     expect(parseSymptomsMessage(message)).toEqual({
-      breathless: true,
-      calfPainOrSwelling: false,
-      painScore: 6,
+      ok: true,
+      symptoms: {
+        breathless: true,
+        calfPainOrSwelling: false,
+        painScore: 6,
+      },
     });
+  });
+
+  it("treats a successful empty tool_use as ok (genuine no-symptoms report)", () => {
+    const message = fixtureMessage([fixtureToolUseBlock("report_symptoms", {})]);
+    expect(parseSymptomsMessage(message)).toEqual({ ok: true, symptoms: {} });
   });
 
   it("ignores a tool_use block for a different (unexpected) tool name", () => {
     const message = fixtureMessage([fixtureToolUseBlock("some_other_tool", { breathless: true })]);
-    expect(parseSymptomsMessage(message)).toEqual({});
+    expect(parseSymptomsMessage(message)).toEqual({ ok: false, symptoms: {} });
   });
 
   it("drops non-boolean junk on boolean fields rather than trusting it", () => {
     const message = fixtureMessage([
       fixtureToolUseBlock("report_symptoms", { breathless: "yes", chestPain: true }),
     ]);
-    expect(parseSymptomsMessage(message)).toEqual({ chestPain: true });
+    expect(parseSymptomsMessage(message)).toEqual({
+      ok: true,
+      symptoms: { chestPain: true },
+    });
   });
 
   it("clamps an out-of-range painScore into 0-10 and rounds non-integers", () => {
     const tooHigh = fixtureMessage([fixtureToolUseBlock("report_symptoms", { painScore: 14.7 })]);
     const tooLow = fixtureMessage([fixtureToolUseBlock("report_symptoms", { painScore: -3 })]);
 
-    expect(parseSymptomsMessage(tooHigh)).toEqual({ painScore: 10 });
-    expect(parseSymptomsMessage(tooLow)).toEqual({ painScore: 0 });
+    expect(parseSymptomsMessage(tooHigh)).toEqual({ ok: true, symptoms: { painScore: 10 } });
+    expect(parseSymptomsMessage(tooLow)).toEqual({ ok: true, symptoms: { painScore: 0 } });
   });
 
-  it("ignores a non-object tool input entirely", () => {
+  it("marks extraction failed when tool input is not an object", () => {
     const message = fixtureMessage([fixtureToolUseBlock("report_symptoms", "not an object")]);
-    expect(parseSymptomsMessage(message)).toEqual({});
+    expect(parseSymptomsMessage(message)).toEqual({ ok: false, symptoms: {} });
   });
 });
 
 describe("extractSymptoms", () => {
-  it("returns an empty Symptoms object when no client is available (degrades gracefully)", async () => {
+  it("returns ok:false when no client is available (not a successful empty extract)", async () => {
     const result = await extractSymptoms("Patient reports feeling breathless.", { client: null });
-    expect(result).toEqual({});
+    expect(result).toEqual({ ok: false, symptoms: {} });
+  });
+
+  it("returns ok:false when the Anthropic call throws", async () => {
+    const fakeClient = {
+      messages: {
+        create: async () => {
+          throw new Error("network down");
+        },
+      },
+    } as unknown as Anthropic;
+
+    const result = await extractSymptoms("I can't breathe.", { client: fakeClient });
+    expect(result).toEqual({ ok: false, symptoms: {} });
   });
 
   it("uses tool-forced output and returns the parsed Symptoms from an injected fake client", async () => {
@@ -122,7 +146,7 @@ describe("extractSymptoms", () => {
       client: fakeClient,
     });
 
-    expect(result).toEqual({ chestPain: true, painScore: 8 });
+    expect(result).toEqual({ ok: true, symptoms: { chestPain: true, painScore: 8 } });
     expect(capturedParams?.tool_choice).toEqual({ type: "tool", name: "report_symptoms" });
     expect(capturedParams?.tools?.[0]?.name).toBe("report_symptoms");
   });

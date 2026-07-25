@@ -308,6 +308,44 @@ describe("evaluate — rationale threshold values are the single source of truth
   });
 });
 
+describe("evaluate — failed symptom extraction must never yield green", () => {
+  it("scary transcript context with extraction failed + unremarkable vitals -> amber, not green", () => {
+    // Empty symptoms here are what extractSymptoms returns on failure — without
+    // symptomsUnusable the engine would incorrectly read this as green.
+    const d = evaluate({
+      dayPostOp: 4,
+      symptoms: noSymptoms,
+      vitals: vitals({ hr: 76, spo2: 97, tempC: 36.9, sbp: 122 }),
+      symptomsUnusable: true,
+    });
+    expect(d.level).not.toBe("green");
+    expect(d.level).toBe("amber");
+    expect(d.condition).toBe("Symptom extraction unavailable");
+    expect(d.firedRules).toEqual(["symptoms.extraction_failed"]);
+    expect(d.rationale[0]).toMatch(/extraction/i);
+  });
+
+  it("successful empty extract + unremarkable vitals -> still green", () => {
+    const d = evaluate({
+      dayPostOp: 4,
+      symptoms: noSymptoms,
+      vitals: vitals({ hr: 76, spo2: 97, tempC: 36.9, sbp: 122 }),
+      symptomsUnusable: false,
+    });
+    expect(d.level).toBe("green");
+    expect(d.firedRules).toEqual([]);
+  });
+
+  it("omitted symptomsUnusable preserves prior evaluate() callers (empty symptoms can still be green)", () => {
+    const d = evaluate({
+      dayPostOp: 4,
+      symptoms: noSymptoms,
+      vitals: vitals({ hr: 76, spo2: 97, tempC: 36.9, sbp: 122 }),
+    });
+    expect(d.level).toBe("green");
+  });
+});
+
 describe("evaluate — co-occurring findings are surfaced consistently in rationale", () => {
   it("wound_infection.fever mentions co-occurring wound discharge, matching sepsis.fever_with_tachycardia's style", () => {
     // Fever without tachycardia -> wound_infection.fever (amber), not sepsis.

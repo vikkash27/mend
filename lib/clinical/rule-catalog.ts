@@ -130,6 +130,17 @@ const qualityGate: ThresholdRef = () => ({
   source: LITERAL_SOURCE,
 });
 
+const extractionGate: ThresholdRef = () => ({
+  label: "Symptom extraction usability gate",
+  value: "extraction must succeed",
+  derivation:
+    "extractSymptoms() must return ok: true from a parseable report_symptoms tool_use; failure means structured symptoms are unknown, not empty",
+  source:
+    "Fail-safe policy in lib/clinical/red-flag-engine.ts (symptoms.extraction_failed): " +
+    "never reassure when symptom extraction did not run or failed. " +
+    "Parallel to vitals.unusable_no_data.",
+});
+
 const trendRate = (label: string, value: string, note: string): ThresholdRef => () => ({
   label,
   value,
@@ -277,6 +288,15 @@ const ENTRIES: readonly RuleEntry[] = [
     test: "New confusion reported since surgery.",
     inputs: [{ kind: "symptom", key: "newConfusion", label: "New confusion" }],
     thresholds: [],
+  },
+  {
+    id: "symptoms.extraction_failed",
+    origin: "red-flag-engine",
+    severity: "amber",
+    condition: "Symptom extraction unavailable",
+    test: "Symptom extraction did not run or failed, so an empty symptoms object must not be treated as an unremarkable check-in.",
+    inputs: [],
+    thresholds: [extractionGate],
   },
   {
     id: "vitals.unusable_no_data",

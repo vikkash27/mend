@@ -14,6 +14,14 @@ export interface EvaluateInput {
   symptoms: Symptoms;
   vitals: VitalsReading;
   ecg?: EcgReading;
+  /**
+   * True when symptom extraction did not run or failed (no client, no
+   * tool_use, transport error). Parallel to unusable vitals: an empty
+   * `symptoms` object is then "unknown", not "patient reported nothing",
+   * and must not yield green. Omit or false when symptoms were obtained
+   * successfully (including a genuine empty report).
+   */
+  symptomsUnusable?: boolean;
 }
 
 /**
@@ -46,6 +54,11 @@ interface Context {
   fevered: boolean;
   /** quality !== "ok", OR every physiologic field is absent after stripping. */
   vitalsUnusable: boolean;
+  /**
+   * Symptom extraction did not run or failed — empty `symptoms` must not be
+   * read as an unremarkable check-in.
+   */
+  symptomsUnusable: boolean;
 }
 
 interface Rule {
@@ -96,6 +109,7 @@ function buildContext(input: EvaluateInput): Context {
     peLowSpo2ThresholdPct,
     fevered,
     vitalsUnusable,
+    symptomsUnusable: input.symptomsUnusable === true,
   };
 }
 
@@ -112,7 +126,8 @@ const breathlessOrChestPain = (ctx: Context): boolean =>
  * RED  (in order): pulmonary embolism -> hypoxia -> shock/bleeding ->
  *                  hip dislocation -> sepsis
  * AMBER (in order): DVT -> wound infection -> new AF -> uncontrolled pain ->
- *                  new confusion -> unusable vitals with no other explanation
+ *                  new confusion -> failed symptom extraction ->
+ *                  unusable vitals with no other explanation
  * GREEN: only reached when no RED or AMBER rule matched. Always has an
  *        empty `firedRules` array — a green verdict is never "a rule fired
  *        favourably", it is the absence of any fired rule.
@@ -274,6 +289,17 @@ const AMBER_RULES: Rule[] = [
     call: "nurse_line",
     test: (ctx) => ctx.symptoms.newConfusion === true,
     rationale: () => "New confusion reported since surgery.",
+  },
+  {
+    id: "symptoms.extraction_failed",
+    condition: "Symptom extraction unavailable",
+    severity: "amber",
+    action:
+      "Contact the nurse line — spoken symptoms could not be read from this check-in, so Mend cannot confirm the patient is well.",
+    call: "nurse_line",
+    test: (ctx) => ctx.symptomsUnusable,
+    rationale: () =>
+      "Symptom extraction did not run or failed (missing API client, missing tool_use, or transport error); escalating rather than treating absent structured symptoms as an unremarkable check-in.",
   },
   {
     id: "vitals.unusable_no_data",
