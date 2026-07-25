@@ -23,9 +23,21 @@ describe("landing copy honesty", () => {
   it("keeps optional quiet deep links for judges", () => {
     const hrefs = PRODUCT_SURFACES.map((s) => s.href);
     expect(hrefs).toEqual(
-      expect.arrayContaining(["/clinician", "/patient", "/family", "/clinician/engine"]),
+      expect.arrayContaining([
+        "/clinician",
+        "/clinician/margaret-ellison/capture",
+        "/patient",
+        "/family",
+        "/clinician/engine",
+      ]),
     );
     expect(PRODUCT_SURFACES.every((s) => s.quiet)).toBe(true);
+  });
+
+  it("uses Capture product language (not Ops)", () => {
+    const blob = JSON.stringify({ landingCopy, PRODUCT_SURFACES });
+    expect(blob).not.toMatch(/\bOps\b/);
+    expect(landingCopy.devices.kardia.body).toMatch(/into Capture/);
   });
 
   it("builds a mailto for Talk to us in nav/footer", () => {

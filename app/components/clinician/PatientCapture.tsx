@@ -6,6 +6,7 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
 import { BleHeartRate } from "@/app/components/BleHeartRate";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { Decision, EcgDetermination, EcgReading, TrendFinding } from "@/lib
 import { PLAUSIBLE_RANGES, validateManualVitals } from "@/lib/clinical/vitals";
 import { SCENARIO_META, SCENARIOS } from "@/lib/sim/active-scenario";
 import type { Scenario } from "@/lib/sim/fixtures";
+import { captureHref } from "@/lib/ui/capture-route";
 import { cn } from "@/lib/utils";
 
 interface DemoStatus {
@@ -132,11 +134,15 @@ async function readErrorMessage(res: Response): Promise<string> {
   return `Request failed (${res.status}).`;
 }
 
-/**
- * Operator tools for the clinician hub: scenario, vitals, ECG, BLE, transcript.
- * Call now lives on the hub primary actions — not duplicated as the Ops hero.
- */
-export function HubOpsPanel() {
+export function PatientCapture(props: {
+  patientId: string;
+  density: "full" | "strip";
+  /** Optional patient display for full header */
+  patientName?: string;
+  dayPostOp?: number;
+  procedure?: string;
+}) {
+  const { patientId, density, patientName, dayPostOp, procedure } = props;
   const formId = useId();
   const [scenario, setScenario] = useState<Scenario>("green");
   const [scenarioState, setScenarioState] = useState<ActionState>({ kind: "idle" });
@@ -161,6 +167,7 @@ export function HubOpsPanel() {
   const [checkinResult, setCheckinResult] = useState<CheckinResult | null>(null);
 
   useEffect(() => {
+    if (density !== "full") return;
     let cancelled = false;
     void (async () => {
       try {
@@ -192,7 +199,7 @@ export function HubOpsPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [density]);
 
   const selectScenario = useCallback(async (next: Scenario) => {
     setScenarioState({ kind: "pending" });
@@ -209,7 +216,7 @@ export function HubOpsPanel() {
       setScenario(next);
       setScenarioState({
         kind: "ok",
-        message: `Active scenario is now ${SCENARIO_META[next].label}. Check-in and triage will use these fixture vitals when Supabase has no rows.`,
+        message: `Care pathway is now ${SCENARIO_META[next].label}. Check-in and triage will use these fixture vitals when Supabase has no rows.`,
       });
     } catch {
       setScenarioState({
@@ -269,7 +276,8 @@ export function HubOpsPanel() {
           timestamp: new Date().toISOString(),
           source: "manual",
           quality: "ok",
-          deviceLabel: "Clinician hub Ops (operator)",
+          deviceLabel: "Capture (operator)",
+          patientId,
           ...parsed,
         }),
       });
@@ -290,35 +298,39 @@ export function HubOpsPanel() {
         message: "Could not reach /api/vitals.",
       });
     }
-  }, [spo2, sbp, dbp, tempC]);
+  }, [spo2, sbp, dbp, tempC, patientId]);
 
-  const uploadEcg = useCallback(async (file: File | null) => {
-    if (!file) return;
-    setEcgReading(null);
-    setEcgState({ kind: "pending" });
-    try {
-      const body = new FormData();
-      body.set("pdf", file);
-      const res = await fetch("/api/ecg", { method: "POST", body });
-      if (!res.ok) {
-        setEcgState({ kind: "error", message: await readErrorMessage(res) });
-        return;
+  const uploadEcg = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
+      setEcgReading(null);
+      setEcgState({ kind: "pending" });
+      try {
+        const body = new FormData();
+        body.set("pdf", file);
+        body.set("patientId", patientId);
+        const res = await fetch("/api/ecg", { method: "POST", body });
+        if (!res.ok) {
+          setEcgState({ kind: "error", message: await readErrorMessage(res) });
+          return;
+        }
+        const json = (await res.json()) as { reading: EcgReading; persisted?: boolean };
+        setEcgReading(json.reading);
+        const label = ECG_LABELS[json.reading.determination];
+        const bpm =
+          json.reading.bpm !== undefined ? `${json.reading.bpm} bpm` : "no BPM on report";
+        setEcgState({
+          kind: "ok",
+          message: json.persisted
+            ? `Extracted ${label} · ${bpm}.`
+            : `Extracted ${label} · ${bpm}. Not persisted — Supabase credentials are missing.`,
+        });
+      } catch {
+        setEcgState({ kind: "error", message: "Could not reach /api/ecg." });
       }
-      const json = (await res.json()) as { reading: EcgReading; persisted?: boolean };
-      setEcgReading(json.reading);
-      const label = ECG_LABELS[json.reading.determination];
-      const bpm =
-        json.reading.bpm !== undefined ? `${json.reading.bpm} bpm` : "no BPM on report";
-      setEcgState({
-        kind: "ok",
-        message: json.persisted
-          ? `Extracted ${label} · ${bpm}.`
-          : `Extracted ${label} · ${bpm}. Not persisted — Supabase credentials are missing.`,
-      });
-    } catch {
-      setEcgState({ kind: "error", message: "Could not reach /api/ecg." });
-    }
-  }, []);
+    },
+    [patientId],
+  );
 
   const runCheckin = useCallback(async () => {
     const text = transcript.trim();
@@ -353,8 +365,174 @@ export function HubOpsPanel() {
     }
   }, [transcript]);
 
+  const vitalFields = (
+    [
+      {
+        id: `${formId}-spo2`,
+        label: "SpO₂",
+        hint: `${PLAUSIBLE_RANGES.spo2.min}–${PLAUSIBLE_RANGES.spo2.max} %`,
+        value: spo2,
+        set: setSpo2,
+        field: "spo2" as const,
+        step: "1",
+      },
+      {
+        id: `${formId}-temp`,
+        label: "Temperature",
+        hint: `${PLAUSIBLE_RANGES.tempC.min}–${PLAUSIBLE_RANGES.tempC.max} °C`,
+        value: tempC,
+        set: setTempC,
+        field: "tempC" as const,
+        step: "0.1",
+      },
+      {
+        id: `${formId}-sbp`,
+        label: "Systolic BP",
+        hint: `${PLAUSIBLE_RANGES.sbp.min}–${PLAUSIBLE_RANGES.sbp.max} mmHg`,
+        value: sbp,
+        set: setSbp,
+        field: "sbp" as const,
+        step: "1",
+      },
+      {
+        id: `${formId}-dbp`,
+        label: "Diastolic BP",
+        hint: `${PLAUSIBLE_RANGES.dbp.min}–${PLAUSIBLE_RANGES.dbp.max} mmHg`,
+        value: dbp,
+        set: setDbp,
+        field: "dbp" as const,
+        step: "1",
+      },
+    ] as const
+  );
+
+  const vitalsInputs = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {vitalFields.map((field) => (
+        <label key={field.id} className="block space-y-1.5" htmlFor={field.id}>
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-label font-medium text-ink">{field.label}</span>
+            <span className="numeric text-meta text-ink-tertiary">{field.hint}</span>
+          </span>
+          <input
+            id={field.id}
+            type="number"
+            inputMode="decimal"
+            step={field.step}
+            value={field.value}
+            onChange={(e) => field.set(e.target.value)}
+            aria-invalid={fieldErrors[field.field] ? true : undefined}
+            aria-describedby={
+              fieldErrors[field.field] ? `${field.id}-err` : undefined
+            }
+            className={cn(
+              "numeric h-11 w-full rounded-lg border bg-paper px-3 text-body text-ink",
+              "outline-none focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/25",
+              fieldErrors[field.field]
+                ? "border-severity-red-border"
+                : "border-line-strong",
+            )}
+          />
+          {fieldErrors[field.field] ? (
+            <span
+              id={`${field.id}-err`}
+              className="block text-meta text-severity-red-fg"
+            >
+              {fieldErrors[field.field]}
+            </span>
+          ) : null}
+        </label>
+      ))}
+    </div>
+  );
+
+  const pdfChooser = (
+    <label className="relative flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-line-strong bg-paper px-4 py-3 hover:bg-wash">
+      <Upload aria-hidden="true" className="size-4 shrink-0 text-ink-tertiary" />
+      <span className="text-label text-ink">Choose PDF</span>
+      <input
+        type="file"
+        accept="application/pdf,.pdf"
+        aria-label="Choose Kardia PDF"
+        className="absolute inset-0 cursor-pointer opacity-0"
+        onChange={(e) => {
+          const file = e.target.files?.[0] ?? null;
+          void uploadEcg(file);
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+
+  if (density === "strip") {
+    const actionError =
+      vitalsState.kind === "error"
+        ? vitalsState
+        : ecgState.kind === "error"
+          ? ecgState
+          : vitalsState.kind === "ok"
+            ? vitalsState
+            : ecgState.kind === "ok" || ecgState.kind === "pending"
+              ? ecgState
+              : vitalsState.kind === "pending"
+                ? vitalsState
+                : ({ kind: "idle" } as ActionState);
+
+    return (
+      <section className="space-y-3 rounded-xl border border-line bg-raised p-4 shadow-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="eyebrow">Capture</h3>
+          <Link
+            href={captureHref(patientId)}
+            className="text-label font-medium text-ink underline-offset-4 hover:underline"
+          >
+            Open capture
+          </Link>
+        </div>
+        {vitalsInputs}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => void submitVitals()}
+            disabled={vitalsState.kind === "pending"}
+          >
+            {vitalsState.kind === "pending" ? (
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            ) : null}
+            Save vitals
+          </Button>
+          {pdfChooser}
+        </div>
+        <StatusLine state={actionError} />
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-5">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <h2 className="font-heading text-heading text-ink">Capture</h2>
+          {patientName || dayPostOp !== undefined || procedure ? (
+            <p className="text-label text-ink-secondary">
+              {[
+                patientName,
+                dayPostOp !== undefined ? `POD ${dayPostOp}` : null,
+                procedure,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+        </div>
+        <Link
+          href={`/clinician/${patientId}`}
+          className="text-label font-medium text-ink underline-offset-4 hover:underline"
+        >
+          Back to chart
+        </Link>
+      </header>
+
       {status && status.missing.length > 0 ? (
         <div
           role="status"
@@ -366,7 +544,7 @@ export function HubOpsPanel() {
           />
           <div className="min-w-0 space-y-1">
             <p className="text-label font-medium text-ink">
-              Credentials missing — Ops actions will degrade with a named message
+              Some services unavailable
             </p>
             <p className="numeric text-meta text-ink-secondary">
               {status.missing.join(" · ")}
@@ -375,132 +553,55 @@ export function HubOpsPanel() {
         </div>
       ) : status ? (
         <p className="text-meta text-ink-tertiary" role="status">
-          Credentials wired — Anthropic, Supabase, ElevenLabs, Twilio, demo phone.
+          Services connected — Anthropic, Supabase, voice, phone.
         </p>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel title="Scenario">
-          <div
-            role="group"
-            aria-label="Choose demo scenario"
-            className="grid gap-2 sm:grid-cols-3"
-          >
-            {SCENARIOS.map((key) => {
-              const active = scenario === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => void selectScenario(key)}
-                  className={cn(
-                    "min-h-11 rounded-lg border px-3 py-2.5 text-left transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ink/25",
-                    active
-                      ? "border-ink bg-ink text-paper"
-                      : "border-line-strong bg-raised text-ink hover:bg-wash",
-                  )}
-                >
-                  <span className="block text-label font-medium">
-                    {SCENARIO_META[key].label}
-                  </span>
-                  <span
-                    className={cn(
-                      "mt-0.5 block text-meta leading-snug",
-                      active ? "text-paper/75" : "text-ink-tertiary",
-                    )}
-                  >
-                    {SCENARIO_META[key].summary}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <StatusLine state={scenarioState} />
-        </Panel>
+      <div
+        role="group"
+        aria-label="Care pathway"
+        className="grid gap-2 sm:grid-cols-3"
+      >
+        {SCENARIOS.map((key) => {
+          const active = scenario === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => void selectScenario(key)}
+              className={cn(
+                "min-h-11 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ink/25",
+                active
+                  ? "border-ink bg-ink text-paper"
+                  : "border-line-strong bg-raised text-ink hover:bg-wash",
+              )}
+            >
+              <span className="block text-label font-medium">
+                {SCENARIO_META[key].label}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 block text-meta leading-snug",
+                  active ? "text-paper/75" : "text-ink-tertiary",
+                )}
+              >
+                {SCENARIO_META[key].summary}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <StatusLine state={scenarioState} />
 
+      <div className="grid gap-5 lg:grid-cols-2">
         <Panel title="Manual vitals">
           <p className="text-label text-ink-secondary">
             SpO₂, blood pressure and temperature — operator&apos;s own device readings,
             labelled as such.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(
-              [
-                {
-                  id: `${formId}-spo2`,
-                  label: "SpO₂",
-                  hint: `${PLAUSIBLE_RANGES.spo2.min}–${PLAUSIBLE_RANGES.spo2.max} %`,
-                  value: spo2,
-                  set: setSpo2,
-                  field: "spo2" as const,
-                  step: "1",
-                },
-                {
-                  id: `${formId}-temp`,
-                  label: "Temperature",
-                  hint: `${PLAUSIBLE_RANGES.tempC.min}–${PLAUSIBLE_RANGES.tempC.max} °C`,
-                  value: tempC,
-                  set: setTempC,
-                  field: "tempC" as const,
-                  step: "0.1",
-                },
-                {
-                  id: `${formId}-sbp`,
-                  label: "Systolic BP",
-                  hint: `${PLAUSIBLE_RANGES.sbp.min}–${PLAUSIBLE_RANGES.sbp.max} mmHg`,
-                  value: sbp,
-                  set: setSbp,
-                  field: "sbp" as const,
-                  step: "1",
-                },
-                {
-                  id: `${formId}-dbp`,
-                  label: "Diastolic BP",
-                  hint: `${PLAUSIBLE_RANGES.dbp.min}–${PLAUSIBLE_RANGES.dbp.max} mmHg`,
-                  value: dbp,
-                  set: setDbp,
-                  field: "dbp" as const,
-                  step: "1",
-                },
-              ] as const
-            ).map((field) => (
-              <label key={field.id} className="block space-y-1.5" htmlFor={field.id}>
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="text-label font-medium text-ink">{field.label}</span>
-                  <span className="numeric text-meta text-ink-tertiary">{field.hint}</span>
-                </span>
-                <input
-                  id={field.id}
-                  type="number"
-                  inputMode="decimal"
-                  step={field.step}
-                  value={field.value}
-                  onChange={(e) => field.set(e.target.value)}
-                  aria-invalid={fieldErrors[field.field] ? true : undefined}
-                  aria-describedby={
-                    fieldErrors[field.field] ? `${field.id}-err` : undefined
-                  }
-                  className={cn(
-                    "numeric h-11 w-full rounded-lg border bg-paper px-3 text-body text-ink",
-                    "outline-none focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/25",
-                    fieldErrors[field.field]
-                      ? "border-severity-red-border"
-                      : "border-line-strong",
-                  )}
-                />
-                {fieldErrors[field.field] ? (
-                  <span
-                    id={`${field.id}-err`}
-                    className="block text-meta text-severity-red-fg"
-                  >
-                    {fieldErrors[field.field]}
-                  </span>
-                ) : null}
-              </label>
-            ))}
-          </div>
+          {vitalsInputs}
           <Button
             type="button"
             onClick={() => void submitVitals()}
@@ -519,21 +620,7 @@ export function HubOpsPanel() {
             Upload a KardiaMobile 6L PDF export. Claude extracts the FDA-cleared
             determination and BPM — Mend never re-derives rhythm from the waveform.
           </p>
-          <label className="relative flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-line-strong bg-paper px-4 py-3 hover:bg-wash">
-            <Upload aria-hidden="true" className="size-4 shrink-0 text-ink-tertiary" />
-            <span className="text-label text-ink">Choose PDF</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              aria-label="Choose Kardia PDF"
-              className="absolute inset-0 cursor-pointer opacity-0"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                void uploadEcg(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          {pdfChooser}
           {ecgReading ? (
             <dl className="grid grid-cols-2 gap-3 rounded-lg border border-line bg-wash px-4 py-3">
               <div>
@@ -557,10 +644,10 @@ export function HubOpsPanel() {
           <BleHeartRate />
         </div>
 
-        <Panel title="Transcript check-in" className="lg:col-span-2">
+        <Panel title="Check-in from transcript" className="lg:col-span-2">
           <p className="text-label text-ink-secondary">
-            Free-text stand-in for the voice call. POSTs to /api/checkin so the full
-            extract → evaluate → compose → SBAR pipeline runs without ElevenLabs.
+            Free-text stand-in for the voice call. Runs the full check-in pipeline
+            without requiring a live call.
           </p>
           <label className="block space-y-1.5" htmlFor={`${formId}-transcript`}>
             <span className="text-label font-medium text-ink">Transcript</span>
