@@ -6,6 +6,7 @@ import { DEFAULT_PATIENT_FIRST_NAME, firstName } from "@/lib/clinical/scripts";
 import { buildSymptomsHistory } from "@/lib/clinical/symptoms-history";
 import { evaluateTrends } from "@/lib/clinical/trends";
 import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
+import { buildCheckinVitalsInsert } from "@/lib/db/build-checkin-vitals-insert";
 import {
   fetchDemoPatient,
   fetchLatestEcg,
@@ -197,20 +198,12 @@ async function persist(args: {
 
     // Write the reading (with pain) into the vitals time series so the next
     // check-in's trend slope sees a distinct timepoint, not only today's
-    // symptoms jsonb on the checkins row.
+    // symptoms jsonb on the checkins row. Stamp recorded_at at write time —
+    // reusing args.vitals.timestamp collides when two check-ins share the
+    // same latest physiologic sample.
     await insertVitals(supabase, {
       patient_id: args.patientId,
-      recorded_at: args.vitals.timestamp,
-      hr: args.vitals.hr ?? null,
-      sbp: args.vitals.sbp ?? null,
-      dbp: args.vitals.dbp ?? null,
-      temp_c: args.vitals.tempC ?? null,
-      spo2: args.vitals.spo2 ?? null,
-      resp_rate: args.vitals.respRate ?? null,
-      pain_score: painScore,
-      source: args.vitals.source,
-      device_label: args.vitals.deviceLabel ?? null,
-      quality: args.vitals.quality,
+      ...buildCheckinVitalsInsert(args.vitals, painScore, new Date().toISOString()),
     });
 
     checkinId = await insertCheckin(supabase, {
