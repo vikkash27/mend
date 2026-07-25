@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { analyzeCheckinVoiceBiomarkers } from "@/lib/amplifier/analyze-checkin";
+import type { VoiceBiomarkersRecord } from "@/lib/amplifier/types";
 import { composeDecision } from "@/lib/clinical/compose";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluate } from "@/lib/clinical/red-flag-engine";
@@ -6,7 +8,7 @@ import { DEFAULT_PATIENT_FIRST_NAME, firstName } from "@/lib/clinical/scripts";
 import { assessNovelty, type PriorDecision } from "@/lib/clinical/novelty";
 import { buildSymptomsHistory } from "@/lib/clinical/symptoms-history";
 import { evaluateTrends } from "@/lib/clinical/trends";
-import type { EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
+import type { Decision, EcgReading, Symptoms, VitalsReading } from "@/lib/clinical/types";
 import { buildCheckinVitalsInsert } from "@/lib/db/build-checkin-vitals-insert";
 import { planEscalationAfterCheckin } from "@/lib/db/escalation-audit";
 import {
@@ -19,6 +21,7 @@ import {
   insertEscalation,
   insertVitals,
   linkEscalationCheckin,
+  updateCheckinAfterBiomarkers,
 } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { extractSymptoms } from "@/lib/llm/extract";
@@ -48,6 +51,8 @@ const DEMO_PATIENT_PROCEDURE_FALLBACK = "hip hemiarthroplasty";
 interface CheckinRequestBody {
   transcript: string;
   dayPostOp?: number;
+  /** ElevenLabs conversation id from POST /api/call — triggers pending voice_biomarkers + fire-and-forget analyze. */
+  conversationId?: string;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -67,8 +72,76 @@ function parseBody(raw: unknown): CheckinRequestBody | undefined {
   ) {
     return undefined;
   }
+  if (
+    raw.conversationId !== undefined &&
+    (typeof raw.conversationId !== "string" || raw.conversationId.trim().length === 0)
+  ) {
+    return undefined;
+  }
 
-  return { transcript: raw.transcript, dayPostOp: raw.dayPostOp as number | undefined };
+  return {
+    transcript: raw.transcript,
+    dayPostOp: raw.dayPostOp as number | undefined,
+    conversationId:
+      typeof raw.conversationId === "string" ? raw.conversationId.trim() : undefined,
+  };
+}
+
+/** Fire-and-forget post-call Amplifier analyze. Never awaited on the check-in
+ * response path — UI polls / re-runs via console "Run voice biomarkers". */
+function triggerVoiceBiomarkerAnalyze(args: {
+  checkinId: string;
+  conversationId: string;
+  dayPostOp: number;
+  symptoms: Symptoms;
+  vitals: VitalsReading;
+  ecg: EcgReading | undefined;
+  priorDecision: Decision;
+}): void {
+  void (async () => {
+    try {
+      const result = await analyzeCheckinVoiceBiomarkers({
+        conversationId: args.conversationId,
+        dayPostOp: args.dayPostOp,
+        symptoms: args.symptoms,
+        vitals: args.vitals,
+        ecg: args.ecg,
+        priorDecision: args.priorDecision,
+      });
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        return;
+      }
+      const ok = await updateCheckinAfterBiomarkers(supabase, args.checkinId, {
+        voice_biomarkers: result.record,
+        decision: result.decision,
+      });
+      if (!ok) {
+        console.warn(
+          "[api/checkin] updateCheckinAfterBiomarkers returned false after voice analyze.",
+        );
+      }
+    } catch (err) {
+      console.warn("[api/checkin] fire-and-forget voice biomarker analyze failed:", err);
+      const supabase = getSupabaseClient();
+      if (!supabase) return;
+      const errorRecord: VoiceBiomarkersRecord = {
+        status: "error",
+        conversationId: args.conversationId,
+        error: err instanceof Error ? err.message : "Voice biomarker analyze failed.",
+      };
+      try {
+        await updateCheckinAfterBiomarkers(supabase, args.checkinId, {
+          voice_biomarkers: errorRecord,
+        });
+      } catch (persistErr) {
+        console.warn(
+          "[api/checkin] failed to persist voice_biomarkers error status:",
+          persistErr,
+        );
+      }
+    }
+  })();
 }
 
 interface ClinicalContext {
@@ -198,6 +271,7 @@ async function persist(args: {
   transcript: string;
   symptoms: Symptoms;
   vitals: VitalsReading;
+  ecg: EcgReading | undefined;
   decision: ReturnType<typeof composeDecision>;
   trendFindings: ReturnType<typeof evaluateTrends>;
   sbar: string | null;
@@ -208,11 +282,12 @@ async function persist(args: {
   /** Id of the early SMS audit row when the durable insert succeeded;
    * undefined means persist should fall back to a full escalation insert. */
   earlyEscalationId: string | undefined;
-}): Promise<void> {
+  conversationId: string | undefined;
+}): Promise<string | undefined> {
   const supabase = getSupabaseClient();
   if (!supabase || !args.patientId) {
     console.warn("[api/checkin] Supabase unavailable or demo patient not found — skipping persistence.");
-    return;
+    return undefined;
   }
 
   let checkinId: string | undefined;
@@ -234,6 +309,10 @@ async function persist(args: {
       ...buildCheckinVitalsInsert(args.vitals, painScore, new Date().toISOString()),
     });
 
+    const pendingBiomarkers: VoiceBiomarkersRecord | undefined = args.conversationId
+      ? { status: "pending", conversationId: args.conversationId }
+      : undefined;
+
     checkinId = await insertCheckin(supabase, {
       patient_id: args.patientId,
       day_post_op: args.dayPostOp,
@@ -243,7 +322,20 @@ async function persist(args: {
       decision: args.decision,
       trend_findings: args.trendFindings,
       sbar: args.sbar,
+      ...(pendingBiomarkers ? { voice_biomarkers: pendingBiomarkers } : {}),
     });
+
+    if (checkinId && args.conversationId) {
+      triggerVoiceBiomarkerAnalyze({
+        checkinId,
+        conversationId: args.conversationId,
+        dayPostOp: args.dayPostOp,
+        symptoms: args.symptoms,
+        vitals: args.vitals,
+        ecg: args.ecg,
+        priorDecision: args.decision,
+      });
+    }
   } catch (err) {
     console.warn("[api/checkin] failed to persist vitals/checkin:", err);
   }
@@ -282,6 +374,8 @@ async function persist(args: {
       console.warn("[api/checkin] failed to persist escalation:", err);
     }
   }
+
+  return checkinId;
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -295,7 +389,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   const body = parseBody(raw);
   if (!body) {
     return NextResponse.json(
-      { error: "Expected { transcript: string, dayPostOp?: number }." },
+      {
+        error:
+          "Expected { transcript: string, dayPostOp?: number, conversationId?: string }.",
+      },
       { status: 400 },
     );
   }
@@ -362,17 +459,19 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
   }
 
-  await persist({
+  const checkinId = await persist({
     patientId,
     dayPostOp,
     transcript: body.transcript,
     symptoms,
     vitals,
+    ecg,
     decision: composed,
     trendFindings,
     sbar,
     notifiedCaregiverAt,
     earlyEscalationId,
+    conversationId: body.conversationId,
   });
 
   // Is this finding new, or has it been true for days? Never changes the
@@ -390,6 +489,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     vitals,
     ecg,
     scenario: getActiveScenario(),
+    ...(checkinId ? { checkinId } : {}),
+    ...(body.conversationId ? { conversationId: body.conversationId } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
   });
 }

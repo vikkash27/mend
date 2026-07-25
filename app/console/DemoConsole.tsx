@@ -55,6 +55,7 @@ interface DemoStatus {
   elevenlabs: boolean;
   twilio: boolean;
   demoPatientPhone: boolean;
+  amplifier: boolean;
   missing: string[];
 }
 
@@ -63,9 +64,28 @@ interface CheckinResult {
   trendFindings: TrendFinding[];
   sbar: string | null;
   symptoms: Record<string, unknown>;
+  vitals?: VitalsReadingLike;
+  ecg?: EcgReading | null;
+  checkinId?: string;
+  conversationId?: string;
   warnings?: string[];
   scenario?: Scenario;
 }
+
+/** Loose vitals shape from /api/checkin — enough to re-POST analyze snapshots. */
+type VitalsReadingLike = {
+  timestamp: string;
+  hr?: number;
+  sbp?: number;
+  dbp?: number;
+  tempC?: number;
+  spo2?: number;
+  respRate?: number;
+  painScore?: number;
+  source: "ble_heart_rate" | "manual" | "kardia_6l" | "simulated";
+  deviceLabel?: string;
+  quality: "ok" | "poor" | "stale";
+};
 
 type ActionState =
   | { kind: "idle" }
@@ -188,6 +208,8 @@ export function DemoConsole() {
   );
   const [checkinState, setCheckinState] = useState<ActionState>({ kind: "idle" });
   const [checkinResult, setCheckinResult] = useState<CheckinResult | null>(null);
+  const [lastConversationId, setLastConversationId] = useState<string | null>(null);
+  const [biomarkersState, setBiomarkersState] = useState<ActionState>({ kind: "idle" });
 
   const [callState, setCallState] = useState<ActionState>({ kind: "idle" });
 
@@ -215,6 +237,7 @@ export function DemoConsole() {
             elevenlabs: false,
             twilio: false,
             demoPatientPhone: false,
+            amplifier: false,
             missing: ["Unable to reach /api/demo-status"],
           });
         }
@@ -358,12 +381,16 @@ export function DemoConsole() {
       return;
     }
     setCheckinResult(null);
+    setBiomarkersState({ kind: "idle" });
     setCheckinState({ kind: "pending" });
     try {
       const res = await fetch("/api/checkin", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ transcript: text }),
+        body: JSON.stringify({
+          transcript: text,
+          ...(lastConversationId ? { conversationId: lastConversationId } : {}),
+        }),
       });
       if (!res.ok) {
         setCheckinState({ kind: "error", message: await readErrorMessage(res) });
@@ -371,18 +398,76 @@ export function DemoConsole() {
       }
       const json = (await res.json()) as CheckinResult;
       setCheckinResult(json);
+      if (json.conversationId) {
+        setLastConversationId(json.conversationId);
+      }
       const warn =
         json.warnings && json.warnings.length > 0
           ? ` ${json.warnings.join(" ")}`
           : "";
+      const pendingNote =
+        json.conversationId && json.checkinId
+          ? " Voice biomarkers analyzing in background."
+          : "";
       setCheckinState({
         kind: "ok",
-        message: `Decision: ${json.decision.level}.${warn}`,
+        message: `Decision: ${json.decision.level}.${warn}${pendingNote}`,
       });
     } catch {
       setCheckinState({ kind: "error", message: "Could not reach /api/checkin." });
     }
-  }, [transcript]);
+  }, [transcript, lastConversationId]);
+
+  const runVoiceBiomarkers = useCallback(async () => {
+    const conversationId = lastConversationId ?? checkinResult?.conversationId;
+    const checkinId = checkinResult?.checkinId;
+    if (!conversationId || !checkinId || !checkinResult?.vitals) {
+      setBiomarkersState({
+        kind: "error",
+        message:
+          "Need a conversationId (place a call) and a check-in with checkinId + vitals snapshots.",
+      });
+      return;
+    }
+    setBiomarkersState({ kind: "pending" });
+    try {
+      const res = await fetch("/api/biomarkers/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          checkinId,
+          conversationId,
+          dayPostOp: 4,
+          symptoms: checkinResult.symptoms,
+          vitals: checkinResult.vitals,
+          ...(checkinResult.ecg ? { ecg: checkinResult.ecg } : {}),
+          priorDecision: checkinResult.decision,
+        }),
+      });
+      if (!res.ok) {
+        setBiomarkersState({ kind: "error", message: await readErrorMessage(res) });
+        return;
+      }
+      const json = (await res.json()) as {
+        record?: { status?: string };
+        decisionChanged?: boolean;
+        decision?: Decision;
+      };
+      setBiomarkersState({
+        kind: "ok",
+        message: `Voice biomarkers ${json.record?.status ?? "done"}${
+          json.decisionChanged && json.decision
+            ? ` · decision now ${json.decision.level}`
+            : ""
+        }.`,
+      });
+    } catch {
+      setBiomarkersState({
+        kind: "error",
+        message: "Could not reach /api/biomarkers/analyze.",
+      });
+    }
+  }, [lastConversationId, checkinResult]);
 
   const callMargaret = useCallback(async () => {
     setCallState({ kind: "pending" });
@@ -405,6 +490,9 @@ export function DemoConsole() {
             `Call failed (${res.status}). Check DEMO_PATIENT_PHONE and ElevenLabs credentials.`,
         });
         return;
+      }
+      if (json.conversationId) {
+        setLastConversationId(json.conversationId);
       }
       setCallState({
         kind: "ok",
@@ -456,7 +544,8 @@ export function DemoConsole() {
         </div>
       ) : status ? (
         <p className="text-meta text-ink-tertiary" role="status">
-          Credentials wired — Anthropic, Supabase, ElevenLabs, Twilio, demo phone.
+          Credentials wired — Anthropic, Supabase, ElevenLabs, Twilio, Amplifier, demo
+          phone.
         </p>
       ) : null}
 
@@ -735,19 +824,42 @@ export function DemoConsole() {
               )}
             />
           </label>
-          <Button
-            type="button"
-            onClick={() => void runCheckin()}
-            disabled={checkinState.kind === "pending"}
-          >
-            {checkinState.kind === "pending" ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : (
-              <FileUp aria-hidden="true" className="size-4" />
-            )}
-            Run check-in
-          </Button>
+          {lastConversationId ? (
+            <p className="numeric text-meta text-ink-tertiary">
+              Last conversationId: {lastConversationId} (sent with check-in)
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={() => void runCheckin()}
+              disabled={checkinState.kind === "pending"}
+            >
+              {checkinState.kind === "pending" ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <FileUp aria-hidden="true" className="size-4" />
+              )}
+              Run check-in
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void runVoiceBiomarkers()}
+              disabled={
+                biomarkersState.kind === "pending" ||
+                !lastConversationId ||
+                !checkinResult?.checkinId
+              }
+            >
+              {biomarkersState.kind === "pending" ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              Run voice biomarkers
+            </Button>
+          </div>
           <StatusLine state={checkinState} />
+          <StatusLine state={biomarkersState} />
 
           {checkinResult ? (
             <div className="space-y-4 border-t border-line pt-4">

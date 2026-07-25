@@ -24,6 +24,7 @@ interface DemoStatus {
   elevenlabs: boolean;
   twilio: boolean;
   demoPatientPhone: boolean;
+  amplifier: boolean;
   missing: string[];
 }
 
@@ -32,9 +33,28 @@ interface CheckinResult {
   trendFindings: TrendFinding[];
   sbar: string | null;
   symptoms: Record<string, unknown>;
+  vitals?: VitalsReadingLike;
+  ecg?: EcgReading | null;
+  checkinId?: string;
+  conversationId?: string;
   warnings?: string[];
   scenario?: Scenario;
 }
+
+/** Loose vitals shape from /api/checkin — enough to re-POST analyze snapshots. */
+type VitalsReadingLike = {
+  timestamp: string;
+  hr?: number;
+  sbp?: number;
+  dbp?: number;
+  tempC?: number;
+  spo2?: number;
+  respRate?: number;
+  painScore?: number;
+  source: "ble_heart_rate" | "manual" | "kardia_6l" | "simulated";
+  deviceLabel?: string;
+  quality: "ok" | "poor" | "stale";
+};
 
 type ActionState =
   | { kind: "idle" }
@@ -165,6 +185,8 @@ export function PatientCapture(props: {
   );
   const [checkinState, setCheckinState] = useState<ActionState>({ kind: "idle" });
   const [checkinResult, setCheckinResult] = useState<CheckinResult | null>(null);
+  const [conversationId, setConversationId] = useState("");
+  const [biomarkersState, setBiomarkersState] = useState<ActionState>({ kind: "idle" });
 
   useEffect(() => {
     if (density !== "full") return;
@@ -191,6 +213,7 @@ export function PatientCapture(props: {
             elevenlabs: false,
             twilio: false,
             demoPatientPhone: false,
+            amplifier: false,
             missing: ["Unable to reach /api/demo-status"],
           });
         }
@@ -339,12 +362,18 @@ export function PatientCapture(props: {
       return;
     }
     setCheckinResult(null);
+    setBiomarkersState({ kind: "idle" });
     setCheckinState({ kind: "pending" });
+    const conv = conversationId.trim();
     try {
       const res = await fetch("/api/checkin", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ transcript: text }),
+        body: JSON.stringify({
+          transcript: text,
+          ...(dayPostOp !== undefined ? { dayPostOp } : {}),
+          ...(conv ? { conversationId: conv } : {}),
+        }),
       });
       if (!res.ok) {
         setCheckinState({ kind: "error", message: await readErrorMessage(res) });
@@ -352,18 +381,76 @@ export function PatientCapture(props: {
       }
       const json = (await res.json()) as CheckinResult;
       setCheckinResult(json);
+      if (json.conversationId) {
+        setConversationId(json.conversationId);
+      }
       const warn =
         json.warnings && json.warnings.length > 0
           ? ` ${json.warnings.join(" ")}`
           : "";
+      const pendingNote =
+        json.conversationId && json.checkinId
+          ? " Voice biomarkers analyzing in background."
+          : "";
       setCheckinState({
         kind: "ok",
-        message: `Decision: ${json.decision.level}.${warn}`,
+        message: `Decision: ${json.decision.level}.${warn}${pendingNote}`,
       });
     } catch {
       setCheckinState({ kind: "error", message: "Could not reach /api/checkin." });
     }
-  }, [transcript]);
+  }, [transcript, conversationId, dayPostOp]);
+
+  const runVoiceBiomarkers = useCallback(async () => {
+    const conv = conversationId.trim() || checkinResult?.conversationId;
+    const checkinId = checkinResult?.checkinId;
+    if (!conv || !checkinId || !checkinResult?.vitals) {
+      setBiomarkersState({
+        kind: "error",
+        message:
+          "Need a conversationId and a check-in with checkinId + vitals snapshots.",
+      });
+      return;
+    }
+    setBiomarkersState({ kind: "pending" });
+    try {
+      const res = await fetch("/api/biomarkers/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          checkinId,
+          conversationId: conv,
+          dayPostOp: dayPostOp ?? 4,
+          symptoms: checkinResult.symptoms,
+          vitals: checkinResult.vitals,
+          ...(checkinResult.ecg ? { ecg: checkinResult.ecg } : {}),
+          priorDecision: checkinResult.decision,
+        }),
+      });
+      if (!res.ok) {
+        setBiomarkersState({ kind: "error", message: await readErrorMessage(res) });
+        return;
+      }
+      const json = (await res.json()) as {
+        record?: { status?: string };
+        decisionChanged?: boolean;
+        decision?: Decision;
+      };
+      setBiomarkersState({
+        kind: "ok",
+        message: `Voice biomarkers ${json.record?.status ?? "done"}${
+          json.decisionChanged && json.decision
+            ? ` · decision now ${json.decision.level}`
+            : ""
+        }.`,
+      });
+    } catch {
+      setBiomarkersState({
+        kind: "error",
+        message: "Could not reach /api/biomarkers/analyze.",
+      });
+    }
+  }, [conversationId, checkinResult, dayPostOp]);
 
   const vitalFields = (
     [
@@ -647,7 +734,8 @@ export function PatientCapture(props: {
         <Panel title="Check-in from transcript" className="lg:col-span-2">
           <p className="text-label text-ink-secondary">
             Free-text stand-in for the voice call. Runs the full check-in pipeline
-            without requiring a live call.
+            without requiring a live call. Paste an ElevenLabs conversationId to
+            queue voice biomarkers after insert.
           </p>
           <label className="block space-y-1.5" htmlFor={`${formId}-transcript`}>
             <span className="text-label font-medium text-ink">Transcript</span>
@@ -662,19 +750,53 @@ export function PatientCapture(props: {
               )}
             />
           </label>
-          <Button
-            type="button"
-            onClick={() => void runCheckin()}
-            disabled={checkinState.kind === "pending"}
-          >
-            {checkinState.kind === "pending" ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : (
-              <FileUp aria-hidden="true" className="size-4" />
-            )}
-            Run check-in
-          </Button>
+          <label className="block space-y-1.5" htmlFor={`${formId}-conversation`}>
+            <span className="text-label font-medium text-ink">
+              Conversation ID (optional)
+            </span>
+            <input
+              id={`${formId}-conversation`}
+              type="text"
+              value={conversationId}
+              onChange={(e) => setConversationId(e.target.value)}
+              placeholder="conv_…"
+              className={cn(
+                "w-full rounded-lg border border-line-strong bg-paper px-3 py-2.5 text-body text-ink",
+                "outline-none focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/25",
+              )}
+            />
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={() => void runCheckin()}
+              disabled={checkinState.kind === "pending"}
+            >
+              {checkinState.kind === "pending" ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <FileUp aria-hidden="true" className="size-4" />
+              )}
+              Run check-in
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void runVoiceBiomarkers()}
+              disabled={
+                biomarkersState.kind === "pending" ||
+                !conversationId.trim() ||
+                !checkinResult?.checkinId
+              }
+            >
+              {biomarkersState.kind === "pending" ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              Run voice biomarkers
+            </Button>
+          </div>
           <StatusLine state={checkinState} />
+          <StatusLine state={biomarkersState} />
 
           {checkinResult ? (
             <div className="space-y-4 border-t border-line pt-4">

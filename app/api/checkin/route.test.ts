@@ -40,6 +40,14 @@ describe("POST /api/checkin", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 when conversationId is present but empty", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ transcript: "I feel fine.", conversationId: "" }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   // PREVIOUSLY WRONG: this test accepted green when Anthropic was unavailable,
   // encoding the clinically unsafe bug where failed extraction looked like
   // "patient reported nothing". With Fix 1, no client => symptomsUnusable =>
