@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CheckinInsert,
+  CheckinRow,
   Database,
   EcgReadingRow,
   EscalationInsert,
@@ -210,6 +211,34 @@ export async function fetchLatestEcg(
     return undefined;
   }
   return rowToEcgReading(result.data);
+}
+
+/**
+ * The patient's single most recent check-in row, for lib/memory/last-checkin.ts
+ * to build the next call's recall opener from. Returns `undefined` on "no
+ * prior check-in" (a brand-new patient) exactly the same way it does on
+ * "Supabase unavailable" — both mean the agent falls back to its default
+ * greeting, never an error.
+ */
+export async function fetchLatestCheckin(
+  supabase: SupabaseClient<Database>,
+  patientId: string,
+): Promise<CheckinRow | undefined> {
+  const result = await withTimeout(
+    supabase
+      .from("checkins")
+      .select("*")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    QUERY_TIMEOUT_MS,
+  );
+
+  if (!result || result.error || !result.data) {
+    return undefined;
+  }
+  return result.data;
 }
 
 /** Persistence timeout is more generous than the read timeout: writes
