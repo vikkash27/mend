@@ -58,11 +58,11 @@ const STATUS: Record<VoiceBiomarkersRecord["status"], VoiceStatusPresentation> =
     },
   };
 
-/** Map Amplifier signal levels onto Mend severity tokens for chip colour + icon. */
+/** Map Amplifier signal levels onto Mend severity tokens for chip colour + icon.
+ * High biomarkers are amber (not red) — red chips imply PE/urgent clinical severity. */
 export function voiceLevelSeverity(level: VoiceSignalLevel): Severity {
   switch (level) {
     case "high":
-      return "red";
     case "moderate":
       return "amber";
     case "low":

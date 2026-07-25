@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeCheckinVoiceBiomarkers } from "@/lib/amplifier/analyze-checkin";
+import { maybeEscalateAfterBiomarkers } from "@/lib/amplifier/caregiver-escalate";
 import type { VoiceBiomarkersRecord } from "@/lib/amplifier/types";
 import { composeDecision } from "@/lib/clinical/compose";
 import { getPhase } from "@/lib/clinical/recovery-graph";
@@ -108,6 +109,26 @@ function triggerVoiceBiomarkerAnalyze(args: {
         ecg: args.ecg,
         priorDecision: args.priorDecision,
       });
+
+      let sbar: string | null = null;
+      try {
+        sbar = await maybeEscalateAfterBiomarkers({
+          checkinId: args.checkinId,
+          dayPostOp: args.dayPostOp,
+          symptoms: args.symptoms,
+          vitals: args.vitals,
+          ecg: args.ecg,
+          decision: result.decision,
+          priorDecision: args.priorDecision,
+          decisionChanged: result.decisionChanged,
+        });
+      } catch (escalateErr) {
+        console.warn(
+          "[api/checkin] biomarker caregiver escalate failed open:",
+          escalateErr,
+        );
+      }
+
       const supabase = getSupabaseClient();
       if (!supabase) {
         return;
@@ -115,6 +136,7 @@ function triggerVoiceBiomarkerAnalyze(args: {
       const ok = await updateCheckinAfterBiomarkers(supabase, args.checkinId, {
         voice_biomarkers: result.record,
         decision: result.decision,
+        ...(sbar !== null ? { sbar } : {}),
       });
       if (!ok) {
         console.warn(

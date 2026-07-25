@@ -33,6 +33,8 @@ const analyzeMock = vi.fn().mockResolvedValue({
   decisionChanged: false,
 });
 
+const maybeEscalateMock = vi.fn().mockResolvedValue(null);
+
 vi.mock("@/lib/db/supabase", () => ({
   getSupabaseClient: () => ({ from: () => ({}) }),
 }));
@@ -59,6 +61,10 @@ vi.mock("@/lib/db/queries", () => ({
 
 vi.mock("@/lib/amplifier/analyze-checkin", () => ({
   analyzeCheckinVoiceBiomarkers: (...args: unknown[]) => analyzeMock(...args),
+}));
+
+vi.mock("@/lib/amplifier/caregiver-escalate", () => ({
+  maybeEscalateAfterBiomarkers: (...args: unknown[]) => maybeEscalateMock(...args),
 }));
 
 vi.mock("@/lib/telephony/sms", () => ({
@@ -92,6 +98,7 @@ describe("POST /api/checkin — conversationId / voice biomarkers", () => {
     linkEscalationCheckin.mockReset().mockResolvedValue(true);
     updateCheckinAfterBiomarkers.mockReset().mockResolvedValue(true);
     analyzeMock.mockClear();
+    maybeEscalateMock.mockClear().mockResolvedValue(null);
     vi.resetModules();
   });
 
@@ -166,6 +173,76 @@ describe("POST /api/checkin — conversationId / voice biomarkers", () => {
         voice_biomarkers: expect.objectContaining({ status: "ready" }),
       }),
     );
+
+    expect(maybeEscalateMock).toHaveBeenCalledTimes(1);
+    expect(maybeEscalateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkinId: "checkin-vb-1",
+        decisionChanged: false,
+        priorDecision: expect.objectContaining({ level: "amber" }),
+      }),
+    );
+  });
+
+  it("shares caregiver escalate on fire-and-forget when decisionChanged", async () => {
+    analyzeMock.mockResolvedValue({
+      record: {
+        status: "ready",
+        conversationId: "conv-raise",
+        mapped: {
+          quality: "ok",
+          respiratory: { level: "low" },
+          cognitive: { level: "high" },
+          source: "amplifier",
+        },
+      },
+      decision: {
+        level: "red",
+        condition: "Respiratory voice biomarker critical",
+        action: "Call 911 now.",
+        call: "911",
+        rationale: ["High respiratory voice biomarker."],
+        firedRules: ["voice.respiratory_high"],
+      },
+      decisionChanged: true,
+    });
+    maybeEscalateMock.mockResolvedValue("S: raised.\nB: day 4.\nA: red.\nR: call 911.");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        transcript: "My calf hurts and is swollen.",
+        conversationId: "conv-raise",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+
+    await vi.waitFor(() => {
+      expect(analyzeMock).toHaveBeenCalledTimes(1);
+    });
+    await vi.waitFor(() => {
+      expect(maybeEscalateMock).toHaveBeenCalledTimes(1);
+    });
+    expect(maybeEscalateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkinId: "checkin-vb-1",
+        decisionChanged: true,
+        priorDecision: expect.objectContaining({ level: "amber" }),
+        decision: expect.objectContaining({ level: "red" }),
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(updateCheckinAfterBiomarkers).toHaveBeenCalledWith(
+        expect.anything(),
+        "checkin-vb-1",
+        expect.objectContaining({
+          sbar: "S: raised.\nB: day 4.\nA: red.\nR: call 911.",
+          decision: expect.objectContaining({ level: "red" }),
+        }),
+      );
+    });
   });
 
   it("does not call analyze when insertCheckin fails even if conversationId is present", async () => {

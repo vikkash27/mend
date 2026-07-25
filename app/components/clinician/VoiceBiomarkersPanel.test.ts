@@ -7,7 +7,8 @@ import {
 
 describe("voiceLevelSeverity / voiceLevelLabel", () => {
   it("maps signal levels to severity tokens with readable labels", () => {
-    expect(voiceLevelSeverity("high")).toBe("red");
+    // High biomarker ≠ PE red — amber/neutral presentation only.
+    expect(voiceLevelSeverity("high")).toBe("amber");
     expect(voiceLevelLabel("high")).toBe("High");
     expect(voiceLevelSeverity("moderate")).toBe("amber");
     expect(voiceLevelLabel("moderate")).toBe("Moderate");
