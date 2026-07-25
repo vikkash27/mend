@@ -1,0 +1,47 @@
+{
+  "_spike": {
+    "useCase": "cognitive",
+    "capturedAt": "2026-07-25T19:10:18.940Z"
+  },
+  "job_id": "375667b2-842e-4b41-bce5-41a1a4aeb2b4",
+  "status": "done",
+  "created_at": "2026-07-25T19:10:10.710000",
+  "completed_at": "2026-07-25T19:10:18.373000",
+  "result": {
+    "audio_quality": {
+      "voice_percentage": 0,
+      "issues": [
+        "insufficient_speech",
+        "high_background_noise"
+      ],
+      "audio_clarity": 1.5
+    },
+    "extended_metrics": [],
+    "signals": [
+      {
+        "flagged": false,
+        "level": "inconclusive",
+        "score": 0,
+        "label": "Cognitive Impairment",
+        "model_id": "cognitive-impairment"
+      }
+    ],
+    "summary": {
+      "flagged_count": 0,
+      "overall_level": "inconclusive",
+      "description": {
+        "vocal_features": [],
+        "summary": "Voice analysis was inconclusive due to audio quality issues."
+      },
+      "recommended_action": "inconclusive",
+      "primary_signals": []
+    }
+  },
+  "audio_content_type": "audio/wav",
+  "audio_size_bytes": 512044,
+  "audio_duration_seconds": 16,
+  "audio_sample_rate": 16000,
+  "api_version": "v2",
+  "job_type": "use_case",
+  "use_case": "cognitive"
+}

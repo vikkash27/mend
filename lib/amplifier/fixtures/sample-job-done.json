@@ -1,0 +1,60 @@
+{
+  "_spike": {
+    "capturedAt": "2026-07-25T19:09:48.193Z",
+    "workingEndpoint": "https://api.amplifierhealth.com/v2/use-case/analyze",
+    "candidateLabel": "use-case/analyze respiratory",
+    "useCaseField": "respiratory",
+    "note": "Sanitized live Amplifier job payload. Secrets/PII stripped.",
+    "submitHttp": 200,
+    "pollHttp": 200,
+    "totalLatencyMs": 20023
+  },
+  "job_id": "113b5021-6421-4fa4-8370-0d01c71a3e29",
+  "status": "done",
+  "created_at": "2026-07-25T19:09:40.746000",
+  "completed_at": "2026-07-25T19:09:47.966000",
+  "result": {
+    "audio_quality": {
+      "voice_percentage": 0,
+      "issues": [
+        "insufficient_speech",
+        "high_background_noise"
+      ],
+      "audio_clarity": 1.4
+    },
+    "extended_metrics": [],
+    "signals": [
+      {
+        "flagged": false,
+        "level": "inconclusive",
+        "score": 0,
+        "label": "COPD",
+        "model_id": "copd"
+      },
+      {
+        "flagged": false,
+        "level": "inconclusive",
+        "score": 0,
+        "label": "Allergy",
+        "model_id": "allergy"
+      }
+    ],
+    "summary": {
+      "flagged_count": 0,
+      "overall_level": "inconclusive",
+      "description": {
+        "vocal_features": [],
+        "summary": "Voice analysis was inconclusive due to audio quality issues."
+      },
+      "recommended_action": "inconclusive",
+      "primary_signals": []
+    }
+  },
+  "audio_content_type": "audio/wav",
+  "audio_size_bytes": 512044,
+  "audio_duration_seconds": 16,
+  "audio_sample_rate": 16000,
+  "api_version": "v2",
+  "job_type": "use_case",
+  "use_case": "respiratory"
+}

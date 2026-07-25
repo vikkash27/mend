@@ -1,74 +1,64 @@
 # Amplifier API spike notes
 
 **Date:** 2026-07-25  
-**Status:** BLOCKED — missing credentials (live spike not run)
+**Status:** LIVE SUCCESS (V2)
 
 ## Credentials
 
-Required env vars (documented in `.env.example`; never commit real values):
+| Env var | Role |
+|---|---|
+| `AMPLIFIER_ACCOUNT_ID` | `X-Account-ID` — form `acct_…` |
+| `AMPLIFIER_API_KEY` | `X-API-Key` — V2 key form `mak_…` |
 
-- `AMPLIFIER_API_KEY`
-- `AMPLIFIER_ACCOUNT_ID`
+**Important:** A V1 **secret** key (`X-Secret-Key` on `/api/v1/...`) will **not** authenticate V2. Create a V2 API key under Console → API Keys. Documented in `.env.example`.
 
-Checked worktree `.env`, main repo `.env`, `.env.local`, and process env. No Amplifier keys present under those names or alternate Amplifier-related names. (Parked `THYMIA_API_KEY` is unrelated and was not used.)
-
-**Unblock:** add both vars to the worktree `.env`, then run:
-
-```bash
-node scripts/spike-amplifier.mjs
-```
-
-Optional: pass a ≥10s WAV path as the first arg; otherwise the script generates a 12s local tone WAV.
-
-## Docs-derived API shape (not yet live-verified)
-
-From [Amplifier Dev Hub](https://docs.amplifierhealth.com/):
-
-| Step | Method / path | Notes |
-|---|---|---|
-| Submit | `POST /v2/models/{model_name}/analyze` | Multipart field `audio`; headers `X-Account-ID`, `X-API-Key` |
-| Poll | `GET /v2/jobs/{job_id}` | Until `status` is `done` (or webhook) |
-| Result | `result.summary.overall_level`, `result.summary.recommended_action`, `result.signals[]` | Documented routing fields |
-
-Example in docs uses `model_name=apex`. Spike script also probes (in order):
-
-1. `POST /v2/use-case/analyze` with use-case fields `respiratory` then `cognitive`
-2. `POST /v2/models/respiratory/analyze` and `.../cognitive/analyze`
-3. `POST /v2/models/apex/analyze` last resort
-
-**Open until live run:** whether `respiratory` / `cognitive` are use-case values or model path segments (or only available via apex).
+Verified: `GET /v2/account/credits` → 200 with remaining credits.
 
 ## Working endpoint(s)
 
-_Not captured — spike blocked on missing keys._
+| Step | Method / path | Notes |
+|---|---|---|
+| Submit | `POST https://api.amplifierhealth.com/v2/use-case/analyze` | Multipart: `audio` + `use_case` (`respiratory` \| `cognitive`) |
+| Poll | `GET https://api.amplifierhealth.com/v2/jobs/{job_id}` | Until `status` is `done` |
+| Auth | Headers | `X-Account-ID`, `X-API-Key` |
 
-## Latency
+Also accepted (not preferred): `POST /v2/models/{name}/analyze` — rejected for short audio the same way; use-case path is what we lock for Mend.
 
-_Not measured._
+**Minimum audio duration: 15 seconds** (12s tone → `AUDIO_TOO_SHORT`).
 
-## Result shape (`overall_level` / `signals`)
+## Latency (live tone WAV, 16s)
 
-_Not captured._ Expected from docs once live:
+| Use case | Approx total (submit + poll to done) |
+|---|---|
+| `respiratory` | ~20s |
+| `cognitive` | ~19s |
 
-- `result.summary.overall_level`
-- `result.summary.recommended_action`
-- `result.signals[]`
+## Result shape
 
-Fixture target after successful run: `lib/amplifier/fixtures/sample-job-done.json` (sanitized).
+Fixtures:
+
+- `lib/amplifier/fixtures/sample-job-done.json` — respiratory (COPD + Allergy signals)
+- `lib/amplifier/fixtures/sample-cognitive-done.json` — cognitive impairment signal
+
+Documented fields present:
+
+- `result.summary.overall_level` (tone sample → `"inconclusive"`)
+- `result.summary.recommended_action` (`"inconclusive"`)
+- `result.signals[]` — each `{ flagged, level, score, label, model_id }`
+- `result.audio_quality` — `{ voice_percentage, issues[], audio_clarity }`
+
+Signal `level` values observed: `"inconclusive"` (synthetic tone). Treat other levels (`low` / `moderate` / `high` or vendor synonyms) as unknown until real speech samples; mapper should normalize safely.
+
+Respiratory signals on tone: `copd`, `allergy`. Cognitive: `cognitive-impairment`.
 
 ## Streaming availability
 
-Public docs describe REST upload + job poll (and optional webhook). No WebSocket / mid-call streaming API documented on the Dev Hub landing page.
+Public Dev Hub documents REST upload + job poll (optional webhook). No workable mid-call WebSocket path proven in this spike.
 
-**v1 recommendation:** **drop streaming for v1** until a documented WS path is found and proven. Post-call analyze + poll remains the authoritative path.
+**v1 product decision: DROP streaming.** Post-call analyze + poll only.
 
-## Fail-safe recommendation
+## Fail-safe recommendation (locked)
 
-Deferred until a live job completes. Tentative framing only (not locked):
+**A — fail-open:** Missing keys, missing recording, job error/timeout, or `overall_level` / signal levels of `inconclusive` with `audio_quality` issues → keep the prior symptoms/vitals decision; store `voice_biomarkers.status = unavailable|error|ready` with mapped quality. Do **not** invent PE red from Amplifier alone.
 
-| Option | Behavior |
-|---|---|
-| A — fail-open | Missing/failed Amplifier → keep prior triage decision |
-| B — caution | Missing/failed Amplifier → nudge toward caution / re-check without inventing PE |
-
-**Lock A vs B only after live payload + latency are known.**
+Rationale from spike: synthetic/poor audio returns inconclusive quickly; blocking chart finalization would break the demo. Re-eval still may raise severity when mapped levels are high on real call audio.

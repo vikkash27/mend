@@ -64,7 +64,7 @@ const CANDIDATES = [
   },
 ];
 
-function generateToneWav(durationSec = 12, sampleRate = 16_000) {
+function generateToneWav(durationSec = 16, sampleRate = 16_000) {
   const numSamples = durationSec * sampleRate;
   const dataSize = numSamples * 2;
   const buffer = Buffer.alloc(44 + dataSize);
@@ -97,8 +97,8 @@ async function loadAudioBuffer(argPath) {
     console.log(`Using WAV from arg: ${abs}`);
     return readFile(abs);
   }
-  console.log("No WAV arg — generating 12s local 440 Hz tone WAV");
-  return generateToneWav(12);
+  console.log("No WAV arg — generating 16s local 440 Hz tone WAV (≥15s API minimum)");
+  return generateToneWav(16);
 }
 
 function sanitizeJob(job) {
