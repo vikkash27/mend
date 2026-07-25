@@ -134,6 +134,11 @@ dangerous window. Don't explain the architecture yet.
 phone rings on speaker. This is the moment that separates Mend from a demo video: it is a
 real outbound phone call to a real handset in the room.
 
+**Twilio trial (current account):** after answering, you will hear Twilio's trial announcement.
+The driver (or the person holding the phone) must **press any key** on the handset. Only then
+does the ElevenLabs media stream attach and Mend speak. Do not hang up during the trial line.
+Upgrading off Trial removes this step; until then, rehearse the keypress.
+
 **Let the conversation run.** The transcript streams turn by turn on the left in serif;
 live heart rate from the watch updates on the right, badged with the device name. When the
 agent hits the safety engine, an inline marker appears — "checking against the safety
@@ -169,6 +174,7 @@ recognise fastest.
 | If this fails | Do this |
 |---|---|
 | Phone doesn't ring | Use the transcript box on `/console`. Identical pipeline — extract, evaluate, compose, SBAR — just typed instead of spoken. Say so plainly; don't pretend. **Requires `ANTHROPIC_API_KEY`** — see the note below. |
+| Phone rings but only the Twilio trial message | Press any key on the handset; Mend should start. If still silent, check ElevenLabs conversation `stream_sid` and that the agent has the `clinical_triage` tool. |
 | Watch won't pair | Manual vitals entry on `/console`. Validated against the same plausibility gate. |
 | Kardia extraction fails | Select the scenario on `/console`; the fixture ECG determination is used. |
 | Supabase is down | Fixture fallbacks carry the demo; the engine and every view still run. |
