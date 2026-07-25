@@ -103,25 +103,13 @@ function joinClauses(clauses: readonly string[]): string {
   return `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`;
 }
 
-/**
- * PURE. Builds the one-sentence recall opener from a prior check-in's
- * already-decided structured facts, e.g. "Yesterday you rated your pain 7
- * out of 10 and reported no breathlessness." Never calls an LLM.
- *
- * Returns an empty string when `facts` is undefined (no prior check-in —
- * the agent falls back to its default greeting) and also when a prior
- * check-in exists but carries nothing worth recalling (no symptoms and no
- * decision level), which can only happen for a malformed row.
- */
-export function formatLastCheckinSummary(facts: LastCheckinFacts | undefined, now: Date = new Date()): string {
-  if (!facts) {
-    return "";
-  }
-
+/** Shared clause list for patient-facing ("your") and family-facing ("her")
+ * recall. Empty when there is nothing worth saying — callers must omit. */
+function recallClauses(facts: LastCheckinFacts, painPossessive: "your" | "her"): string[] {
   const clauses: string[] = [];
 
   if (typeof facts.symptoms.painScore === "number") {
-    clauses.push(`rated your pain ${facts.symptoms.painScore} out of 10`);
+    clauses.push(`rated ${painPossessive} pain ${facts.symptoms.painScore} out of 10`);
   }
   if (facts.symptoms.breathless === true) {
     clauses.push("reported feeling breathless");
@@ -146,12 +134,57 @@ export function formatLastCheckinSummary(facts: LastCheckinFacts | undefined, no
       clauses.push("said everything looked fine");
     } else if (facts.decisionLevel === "amber" || facts.decisionLevel === "red") {
       clauses.push("flagged some concerns that needed follow-up");
-    } else {
-      return "";
     }
   }
 
+  return clauses;
+}
+
+/**
+ * PURE. Builds the one-sentence recall opener from a prior check-in's
+ * already-decided structured facts, e.g. "Yesterday you rated your pain 7
+ * out of 10 and reported no breathlessness." Never calls an LLM.
+ *
+ * Returns an empty string when `facts` is undefined (no prior check-in —
+ * the agent falls back to its default greeting) and also when a prior
+ * check-in exists but carries nothing worth recalling (no symptoms and no
+ * decision level), which can only happen for a malformed row.
+ */
+export function formatLastCheckinSummary(facts: LastCheckinFacts | undefined, now: Date = new Date()): string {
+  if (!facts) {
+    return "";
+  }
+
+  const clauses = recallClauses(facts, "your");
+  if (clauses.length === 0) {
+    return "";
+  }
+
   return `${timeLabel(facts.createdAt, now)} you ${joinClauses(clauses)}.`;
+}
+
+/**
+ * PURE. Family-facing third-person recall of a prior check-in's structured
+ * facts, e.g. "Yesterday she rated her pain 4 out of 10 and reported no
+ * breathlessness." Never invents a commitment or follow-up the patient did
+ * not record — returns "" when there is nothing real to say, and the
+ * family surface omits the sentence.
+ *
+ * Note: there is no stored "she said she'd ring them after lunch" fact in
+ * the check-in row. That old hardcoded line is gone; this only speaks facts
+ * the engine already recorded (symptoms / decision level).
+ */
+export function formatFamilyRecall(facts: LastCheckinFacts | undefined, now: Date = new Date()): string {
+  if (!facts) {
+    return "";
+  }
+
+  const clauses = recallClauses(facts, "her");
+  if (clauses.length === 0) {
+    return "";
+  }
+
+  return `${timeLabel(facts.createdAt, now)} she ${joinClauses(clauses)}.`;
 }
 
 /**
@@ -175,6 +208,30 @@ export async function lastCheckinSummary(patientId: string): Promise<string> {
     return formatLastCheckinSummary(rowToLastCheckinFacts(row));
   } catch (err) {
     console.warn("[memory] failed to load the last check-in — no prior check-in recall for this call.", err);
+    return "";
+  }
+}
+
+/**
+ * Family-view counterpart of `lastCheckinSummary`: same read, third-person
+ * wording. Returns "" (never throws) when there is no prior check-in or
+ * persistence is unavailable — the family surface omits the sentence.
+ */
+export async function familyRecallSummary(patientId: string): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("[memory] Supabase client unavailable — no family recall sentence.");
+    return "";
+  }
+
+  try {
+    const row = await fetchLatestCheckin(supabase, patientId);
+    if (!row) {
+      return "";
+    }
+    return formatFamilyRecall(rowToLastCheckinFacts(row));
+  } catch (err) {
+    console.warn("[memory] failed to load the last check-in — no family recall sentence.", err);
     return "";
   }
 }

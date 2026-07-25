@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CheckinRow } from "../db/supabase";
-import { formatLastCheckinSummary, rowToLastCheckinFacts, type LastCheckinFacts } from "./last-checkin";
+import {
+  formatFamilyRecall,
+  formatLastCheckinSummary,
+  rowToLastCheckinFacts,
+  type LastCheckinFacts,
+} from "./last-checkin";
 
 function checkinRow(partial: Partial<CheckinRow> = {}): CheckinRow {
   return {
@@ -82,6 +87,33 @@ describe("formatLastCheckinSummary (pure)", () => {
     );
     expect(summary).toBe(
       "Yesterday you rated your pain 6 out of 10, reported chest pain and reported wound discharge.",
+    );
+  });
+});
+
+describe("formatFamilyRecall (pure, third person)", () => {
+  it("returns an empty string when there is no prior check-in", () => {
+    expect(formatFamilyRecall(undefined, NOW)).toBe("");
+  });
+
+  it("returns an empty string when facts carry nothing worth recalling", () => {
+    expect(formatFamilyRecall(facts({ symptoms: {}, decisionLevel: undefined }), NOW)).toBe("");
+  });
+
+  it("speaks in the third person about Mum, without vitals numbers", () => {
+    const summary = formatFamilyRecall(
+      facts({ symptoms: { painScore: 4, breathless: false } }),
+      NOW,
+    );
+    expect(summary).toBe(
+      "Yesterday she rated her pain 4 out of 10 and reported no breathlessness.",
+    );
+    expect(summary).not.toMatch(/\b(bpm|SpO2|mmHg|°C)\b/i);
+  });
+
+  it("falls back to a decision-level statement when no notable symptoms were recorded", () => {
+    expect(formatFamilyRecall(facts({ decisionLevel: "amber" }), NOW)).toContain(
+      "flagged some concerns",
     );
   });
 });

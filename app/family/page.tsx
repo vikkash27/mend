@@ -8,7 +8,10 @@ import { evaluate } from "@/lib/clinical/red-flag-engine";
 import { getPhase } from "@/lib/clinical/recovery-graph";
 import { evaluateTrends } from "@/lib/clinical/trends";
 import type { Decision, Symptoms, TrendFinding, VitalsReading } from "@/lib/clinical/types";
+import { fetchDemoPatient } from "@/lib/db/queries";
+import { getSupabaseClient } from "@/lib/db/supabase";
 import { buildFallbackSbar } from "@/lib/llm/sbar";
+import { familyRecallSummary } from "@/lib/memory/last-checkin";
 import { getActiveScenario } from "@/lib/sim/active-scenario";
 import { scenarioEcg, scenarioHistory, scenarioVitals, type Scenario } from "@/lib/sim/fixtures";
 import { resolveFamilyScenario } from "@/lib/sim/resolve-demo";
@@ -46,12 +49,24 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** What the fixtures don't model: same voice as the call timeline's turns. */
 const WELL_SUMMARY =
   "She said the pain keeps easing, she slept through the night, and she's been up and about with her frame.";
-const FOLLOWED_UP = "She told Mend she'd ring them after lunch.";
 
 interface FamilyState {
   decision: Decision;
   findings: TrendFinding[];
   history: VitalsReading[];
+}
+
+/** Never blocks the page: missing Supabase just means no recall sentence. */
+async function loadFamilyRecall(): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return "";
+  try {
+    const patient = await fetchDemoPatient(supabase);
+    if (!patient) return "";
+    return familyRecallSummary(patient.id);
+  } catch {
+    return "";
+  }
 }
 
 /** Scenario-appropriate symptom fixtures so the engine path matches the
@@ -147,6 +162,7 @@ export default async function FamilyPage({
 
   const state = loadState(scenario);
   const copy = familyCopy(state.decision, state.findings);
+  const recall = await loadFamilyRecall();
   const now = new Date();
   const days = lastSevenDays(state.history, now);
 
@@ -170,7 +186,9 @@ export default async function FamilyPage({
         <>
           <p className="pt-6 font-serif text-lede text-ink">{copy.whatHappened}</p>
           <p className="pt-5 font-serif text-lede text-ink">{copy.whatMendAsked}</p>
-          <p className="pt-3 text-lg text-ink-secondary">{FOLLOWED_UP}</p>
+          {recall ? (
+            <p className="pt-3 text-lg text-ink-secondary">{recall}</p>
+          ) : null}
 
           <div className="flex flex-col gap-3 pt-10">
             <a
