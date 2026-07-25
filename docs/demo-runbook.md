@@ -137,9 +137,10 @@ architecture yet. (Landing CTAs: Open clinician hub / Patient portal.)
 patient chart via `#ops`.
 
 **Optional dig-deeper before the call.** Click Margaret (or any worklist / shortlist row) →
-`/clinician/<id>` opens on the **Overview** tab. Switch tabs in the UI (Trends, Notes, Orders,
-Billing); the URL `?tab=` updates and a refresh preserves the tab. At wide (`xl+`) widths a
-roster sidebar stays visible — switching patients keeps the current tab.
+`/clinician/<id>` opens on the **Overview** tab (severity + latest reading snapshot). Switch tabs
+in the UI (Overview · Readings & trends · Handoff · Billing · Audit); the URL `?tab=` updates
+and a refresh preserves the tab. At wide (`xl+`) widths a roster sidebar stays visible —
+switching patients keeps the current tab.
 
 **Trigger the call** from the hub — **Call now**. Because the hub has no chart pane, this
 navigates to Margaret's chart with Live focused (`/clinician/margaret-ellison?live=1`). The
@@ -171,9 +172,9 @@ selecting PE in hub Ops (durable store). If you need a deep link for the PE cut,
 `/family?state=urgent` — never `?state=attention` (that is the drift/amber frame).
 
 **Return to the patient chart** (`/clinician/margaret-ellison`). Use tabs for dig-deeper —
-Overview for the SBAR handoff, Trends / Notes as needed, and the audit trail expanded to show
-fired rules with their inputs, thresholds and provenance. Hub worklist remains the morning
-board if you need the full census.
+Overview for severity and the latest reading snapshot, **Handoff** for the SBAR, Readings &
+trends as needed, and **Audit** for the audit trail / fired rules with their inputs,
+thresholds and provenance. Hub worklist remains the morning board if you need the full census.
 
 **Close on `/clinician/engine`.** The vignette suite running live. Fifteen clinical cases,
 deterministic pass/fail, in front of the judges. Then the line that lands: *the model never
