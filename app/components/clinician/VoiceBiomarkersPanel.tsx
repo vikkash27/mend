@@ -128,9 +128,16 @@ export function VoiceBiomarkersPanel({
   const status = voiceStatusPresentation(record.status);
   const StatusIcon = status.icon;
   const mapped = record.mapped;
+  const phaseEyebrow =
+    record.phase === "during"
+      ? "During call"
+      : record.phase === "final"
+        ? "Final analysis"
+        : null;
 
   return (
     <div className={cn("space-y-3", className)}>
+      {phaseEyebrow ? <p className="eyebrow">{phaseEyebrow}</p> : null}
       <SectionHeading title="Voice biomarkers" meta="from voice call" />
 
       <div

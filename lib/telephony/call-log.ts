@@ -20,8 +20,8 @@ type CheckinLike = {
   created_at: string;
   day_post_op?: number | null;
   transcript?: string | null;
-  decision?: { level?: string } | null;
-  voice_biomarkers?: VoiceBiomarkersRecord | null;
+  decision?: unknown;
+  voice_biomarkers?: VoiceBiomarkersRecord | null | unknown;
 };
 
 function truncateSummary(text: string): string {
@@ -39,6 +39,23 @@ function parseDecisionLevel(level?: string): CallLogRow["decisionLevel"] {
   return undefined;
 }
 
+function decisionLevelFromUnknown(decision: unknown): CallLogRow["decisionLevel"] {
+  if (!decision || typeof decision !== "object") {
+    return undefined;
+  }
+  const level = (decision as { level?: unknown }).level;
+  return parseDecisionLevel(typeof level === "string" ? level : undefined);
+}
+
+function asVoiceBiomarkers(
+  value: unknown,
+): VoiceBiomarkersRecord | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  return value as VoiceBiomarkersRecord;
+}
+
 function summaryFromTurns(turns: LiveCallSession["turns"]): string {
   if (turns.length === 0) {
     return "Call in progress";
@@ -47,13 +64,13 @@ function summaryFromTurns(turns: LiveCallSession["turns"]): string {
 }
 
 function rowFromCheckin(checkin: CheckinLike): CallLogRow {
-  const biomarkers = checkin.voice_biomarkers ?? undefined;
+  const biomarkers = asVoiceBiomarkers(checkin.voice_biomarkers);
   return {
     id: checkin.id,
     at: checkin.created_at,
     ...(typeof checkin.day_post_op === "number" ? { dayPostOp: checkin.day_post_op } : {}),
     summary: truncateSummary(checkin.transcript ?? ""),
-    decisionLevel: parseDecisionLevel(checkin.decision?.level),
+    decisionLevel: decisionLevelFromUnknown(checkin.decision),
     ...(biomarkers?.status ? { biomarkersStatus: biomarkers.status } : {}),
     ...(biomarkers?.phase ? { biomarkersPhase: biomarkers.phase } : {}),
     inProgress: false,

@@ -13,7 +13,13 @@ import type {
   VitalsReading,
 } from "@/lib/clinical/types";
 import { cn } from "@/lib/utils";
+import { CallLogCompact, CallLogHubNote } from "./CallLogCompact";
+import {
+  hasLiveTranscript,
+  transcriptEventsForStage,
+} from "./call-stage-live";
 import { EscalationTakeover } from "./EscalationTakeover";
+import { LiveBiomarkersReadout } from "./LiveBiomarkersReadout";
 import { LiveVitals } from "./LiveVitals";
 import { TranscriptStream } from "./TranscriptStream";
 import {
@@ -23,6 +29,7 @@ import {
   type CallEvent,
   type CallStage as Stage,
 } from "./timeline";
+import { useLiveCallFeed } from "./use-live-call-feed";
 import { useCallRealtime, type RealtimeCheckin } from "./use-realtime";
 
 /**
@@ -102,6 +109,11 @@ export function CallStage({
   const [cursor, setCursor] = useState(startCursor);
   const [playing, setPlaying] = useState(initiallyPlaying);
 
+  // Live ElevenLabs / Amplifier feed — idle keeps the scripted fixture stage.
+  const liveFeed = useLiveCallFeed();
+  const liveMode = hasLiveTranscript(liveFeed);
+  const liveBiomarkers = liveFeed.session?.biomarkers ?? null;
+
   // Realtime supersedes the fixtures when it has something to say.
   const [liveVitals, setLiveVitals] = useState<VitalsReading>();
   const [liveEvents, setLiveEvents] = useState<CallEvent[]>([]);
@@ -159,10 +171,12 @@ export function CallStage({
 
   const vitals = liveVitals ?? scripted.vitals;
   const decision = liveDecision ?? scripted.decision;
-  const visible = useMemo(
-    () => [...scripted.visible, ...liveEvents],
-    [scripted.visible, liveEvents],
-  );
+  const visible = useMemo(() => {
+    if (liveMode) {
+      return transcriptEventsForStage(events, liveFeed);
+    }
+    return [...scripted.visible, ...liveEvents];
+  }, [liveMode, events, liveFeed, scripted.visible, liveEvents]);
 
   // The header clock keeps running between turns so the call reads as live.
   // It is seeded from the scripted timings and never from a wall clock, which
@@ -172,27 +186,31 @@ export function CallStage({
   const elapsed = Math.max(seconds, scripted.elapsed);
 
   useEffect(() => {
-    if (!playing) return;
+    // Live transcript owns the clock feel; keep the fixture second-ticker idle-only.
+    if (!playing || liveMode) return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000 / speed);
     return () => clearInterval(id);
-  }, [playing, speed]);
+  }, [playing, speed, liveMode]);
 
   const lastIndex = events.length - 1;
   const atEnd = cursor >= lastIndex;
 
   useEffect(() => {
-    if (!playing || atEnd) return;
+    // Preserve ?play= cursor advancement only while the live feed has no turns yet.
+    if (!playing || atEnd || liveMode) return;
     const from = cursor < 0 ? 0 : events[cursor].at;
     const gap = Math.max(0.4, events[cursor + 1].at - from);
     const id = setTimeout(() => setCursor((c) => c + 1), (gap * 1000) / speed);
     return () => clearTimeout(id);
-  }, [playing, atEnd, cursor, events, speed]);
+  }, [playing, atEnd, cursor, events, speed, liveMode]);
 
   // Motion stays off for a frozen capture frame, and switches on the moment
   // a presenter drives the call by hand.
   const [interactive, setInteractive] = useState(initiallyPlaying);
 
   useEffect(() => {
+    // Keyboard / presenter controls stay available when idle (fixture mode).
+    if (liveMode) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key;
@@ -218,10 +236,12 @@ export function CallStage({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lastIndex]);
+  }, [lastIndex, liveMode]);
 
   const escalated = decision.level === "red";
-  const animate = interactive;
+  const animate = interactive || liveMode;
+  const onLiveCall =
+    liveFeed.status === "active" || liveFeed.status === "finalizing";
 
   return (
     <div
@@ -279,7 +299,7 @@ export function CallStage({
           <p className="flex items-center justify-end gap-2.5">
             <PulseDot animate={animate} />
             <span className={cn(LABEL, "text-ink-secondary")}>
-              {playing ? "On the call" : "Call in progress"}
+              {onLiveCall || playing ? "On the call" : "Call in progress"}
             </span>
           </p>
           <p
@@ -318,24 +338,33 @@ export function CallStage({
 
         <section
           className={cn(
-            "relative min-h-0 bg-wash",
+            "relative flex min-h-0 flex-col bg-wash",
             isHub
               ? "px-4 py-4 lg:px-6 lg:py-5"
               : "px-6 py-6 lg:px-10 lg:py-8 2xl:px-14 2xl:py-10",
           )}
         >
-          <LiveVitals
-            vitals={vitals}
-            phase={phase}
-            dayPostOp={dayPostOp}
-            // Underneath the takeover the pane keeps its pre-escalation
-            // verdict, so the red field wipes over a calm surface rather than
-            // over a second red one.
-            decision={escalated ? openingDecision : decision}
-            ecg={ecg}
-            elapsed={elapsed}
-            animate={animate}
-          />
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto 2xl:gap-7">
+            <LiveVitals
+              vitals={vitals}
+              phase={phase}
+              dayPostOp={dayPostOp}
+              // Underneath the takeover the pane keeps its pre-escalation
+              // verdict, so the red field wipes over a calm surface rather than
+              // over a second red one.
+              decision={escalated ? openingDecision : decision}
+              ecg={ecg}
+              elapsed={elapsed}
+              animate={animate}
+              className="min-h-0 flex-1"
+            />
+            {liveBiomarkers ? (
+              <LiveBiomarkersReadout
+                record={liveBiomarkers}
+                className="shrink-0"
+              />
+            ) : null}
+          </div>
           <AnimatePresence initial={false}>
             {escalated ? (
               <EscalationTakeover
@@ -349,6 +378,11 @@ export function CallStage({
           </AnimatePresence>
         </section>
       </main>
+
+      {!isHub ? <CallLogCompact rows={liveFeed.recentCalls} /> : null}
+      {isHub ? (
+        <CallLogHubNote rows={liveFeed.recentCalls} patientId={patient.id} />
+      ) : null}
 
       {/* Page footer — outside the absolute red takeover, so the peak frame
           keeps one instruction and the honesty line still ships. */}
