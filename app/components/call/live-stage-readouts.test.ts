@@ -8,6 +8,7 @@ import { LiveBiomarkersReadout } from "./LiveBiomarkersReadout";
 import {
   compactCallLogRows,
   hasLiveTranscript,
+  stageElapsedSeconds,
   transcriptEventsForStage,
 } from "./call-stage-live";
 import type { CallEvent } from "./timeline";
@@ -126,6 +127,43 @@ describe("call stage live helpers", () => {
       },
     };
     expect(hasLiveTranscript(completedFeed)).toBe(false);
+  });
+
+  it("drives the stage clock from the last live event at while liveMode is on", () => {
+    const liveEvents: CallEvent[] = [
+      {
+        id: "live-0",
+        kind: "turn",
+        at: 0,
+        speaker: "mend",
+        text: "How are you feeling?",
+      },
+      {
+        id: "live-1",
+        kind: "turn",
+        at: 12,
+        speaker: "margaret",
+        text: "Short of breath today.",
+      },
+    ];
+
+    expect(
+      stageElapsedSeconds({
+        liveMode: true,
+        liveEvents,
+        tickerSeconds: 3,
+        scriptedElapsed: 62,
+      }),
+    ).toBe(12);
+
+    expect(
+      stageElapsedSeconds({
+        liveMode: false,
+        liveEvents,
+        tickerSeconds: 3,
+        scriptedElapsed: 62,
+      }),
+    ).toBe(62);
   });
 });
 

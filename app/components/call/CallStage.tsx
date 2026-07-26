@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { CallLogCompact, CallLogHubNote } from "./CallLogCompact";
 import {
   hasLiveTranscript,
+  stageElapsedSeconds,
   transcriptEventsForStage,
 } from "./call-stage-live";
 import { EscalationTakeover } from "./EscalationTakeover";
@@ -178,12 +179,16 @@ export function CallStage({
     return [...scripted.visible, ...liveEvents];
   }, [liveMode, events, liveFeed, scripted.visible, liveEvents]);
 
-  // The header clock keeps running between turns so the call reads as live.
-  // It is seeded from the scripted timings and never from a wall clock, which
-  // would differ between the server and the client render; whichever of the
-  // two is further into the call wins, so stepping by hand jumps it forward.
+  // Idle: header clock ticks from scripted timings (not wall clock) so SSR
+  // and client stay aligned; stepping by hand jumps it forward via max().
+  // Live: ticker stops and the clock follows the latest live event `at`.
   const [seconds, setSeconds] = useState(scripted.elapsed);
-  const elapsed = Math.max(seconds, scripted.elapsed);
+  const elapsed = stageElapsedSeconds({
+    liveMode,
+    liveEvents: visible,
+    tickerSeconds: seconds,
+    scriptedElapsed: scripted.elapsed,
+  });
 
   useEffect(() => {
     // Live transcript owns the clock feel; keep the fixture second-ticker idle-only.
@@ -329,7 +334,7 @@ export function CallStage({
             animate={animate}
             className="flex-1"
           />
-          {!isHub && initiallyPlaying ? (
+          {!isHub && initiallyPlaying && !liveMode ? (
             <p className="numeric shrink-0 pt-5 text-meta text-ink-tertiary">
               Space pauses · → steps forward · R restarts
             </p>

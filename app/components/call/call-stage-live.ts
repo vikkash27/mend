@@ -29,3 +29,20 @@ export function transcriptEventsForStage(
 export function compactCallLogRows(rows: CallLogRow[]): CallLogRow[] {
   return rows.filter((row) => !row.inProgress);
 }
+
+/**
+ * Header / vitals clock seconds. Live mode follows the latest live event `at`
+ * (fixture ticker is stopped); idle mode keeps the scripted/ticker max.
+ */
+export function stageElapsedSeconds(options: {
+  liveMode: boolean;
+  liveEvents: CallEvent[];
+  tickerSeconds: number;
+  scriptedElapsed: number;
+}): number {
+  if (options.liveMode) {
+    const last = options.liveEvents[options.liveEvents.length - 1];
+    return last?.at ?? 0;
+  }
+  return Math.max(options.tickerSeconds, options.scriptedElapsed);
+}
