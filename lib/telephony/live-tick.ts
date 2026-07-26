@@ -33,33 +33,38 @@ export async function runLiveTick(args: {
       fetchImpl: args.fetchImpl,
     });
 
+    let skipSnapshot = false;
+
     if (conversation.status === "ok") {
       updateLiveSession(args.conversationId, { turns: conversation.turns });
 
       if (conversation.ended) {
         updateLiveSession(args.conversationId, { status: "finalizing" });
-      } else {
-        const analyze = args.analyzeSnapshot ?? analyzeLiveVoiceSnapshot;
-        const snapshot = await analyze({
-          conversationId: args.conversationId,
-          fetchImpl: args.fetchImpl,
-        });
+        skipSnapshot = true;
+      }
+    }
 
-        if (
-          (snapshot.status === "unavailable" || snapshot.status === "error") &&
-          priorBiomarkers?.status === "ready"
-        ) {
-          updateLiveSession(args.conversationId, {
-            error: snapshot.error,
-          });
-        } else {
-          updateLiveSession(args.conversationId, {
-            biomarkers: snapshot,
-            ...(snapshot.status !== "ready" && snapshot.error
-              ? { error: snapshot.error }
-              : {}),
-          });
-        }
+    if (!skipSnapshot) {
+      const analyze = args.analyzeSnapshot ?? analyzeLiveVoiceSnapshot;
+      const snapshot = await analyze({
+        conversationId: args.conversationId,
+        fetchImpl: args.fetchImpl,
+      });
+
+      if (
+        (snapshot.status === "unavailable" || snapshot.status === "error") &&
+        priorBiomarkers?.status === "ready"
+      ) {
+        updateLiveSession(args.conversationId, {
+          error: snapshot.error,
+        });
+      } else {
+        updateLiveSession(args.conversationId, {
+          biomarkers: snapshot,
+          ...(snapshot.status !== "ready" && snapshot.error
+            ? { error: snapshot.error }
+            : {}),
+        });
       }
     }
 
