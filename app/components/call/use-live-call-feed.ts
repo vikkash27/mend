@@ -72,10 +72,15 @@ async function fetchLiveCallFeed(signal?: AbortSignal): Promise<LiveCallFeed> {
   };
 }
 
-export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
+export function useLiveCallFeed(pollMs = 2500, enabled = true): LiveCallFeed {
   const [feed, setFeed] = useState<LiveCallFeed>(idleFeed);
 
   useEffect(() => {
+    if (!enabled) {
+      setFeed(idleFeed);
+      return;
+    }
+
     let latestGeneration = 0;
     let inFlight: AbortController | null = null;
 
@@ -116,7 +121,7 @@ export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
       inFlight?.abort();
       window.clearInterval(timer);
     };
-  }, [pollMs]);
+  }, [pollMs, enabled]);
 
   return feed;
 }
