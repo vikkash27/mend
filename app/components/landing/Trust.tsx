@@ -27,10 +27,7 @@ export function Trust() {
         >
           {c.title}
         </motion.h2>
-        <motion.p
-          variants={fadeUp}
-          className="mt-3 max-w-2xl text-body-lg text-ink-secondary"
-        >
+        <motion.p variants={fadeUp} className="prose-support mt-3">
           {c.support}
         </motion.p>
         <ul className="mt-8 grid gap-3 md:grid-cols-3 md:gap-4">

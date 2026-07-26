@@ -26,10 +26,7 @@ export function ValueLines() {
         >
           {c.title}
         </motion.h2>
-        <motion.p
-          variants={fadeUp}
-          className="mt-3 max-w-2xl text-body-lg text-ink-secondary"
-        >
+        <motion.p variants={fadeUp} className="prose-support mt-3">
           {c.support}
         </motion.p>
 

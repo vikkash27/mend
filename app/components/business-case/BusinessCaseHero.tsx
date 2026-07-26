@@ -31,19 +31,16 @@ export function BusinessCaseHero() {
         </motion.p>
         <motion.h1
           variants={fadeUp}
-          className="mt-3 max-w-3xl font-heading text-heading tracking-tight text-ink sm:text-title"
+          className="mt-3 max-w-3xl font-heading text-title tracking-tight text-ink sm:text-display"
         >
           {c.headline}
         </motion.h1>
-        <motion.p
-          variants={fadeUp}
-          className="mt-5 max-w-xl text-body-lg text-ink-secondary"
-        >
+        <motion.p variants={fadeUp} className="prose-support mt-5">
           {c.support}
         </motion.p>
         <motion.p
           variants={fadeUp}
-          className="mt-8 max-w-2xl text-lede text-ink"
+          className="mt-8 max-w-2xl border-l-2 border-signal pl-4 text-lede text-ink"
         >
           {c.lede}
         </motion.p>

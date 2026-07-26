@@ -32,19 +32,13 @@ export function Surfaces() {
         >
           {c.title}
         </motion.h2>
-        <motion.p
-          variants={fadeUp}
-          className="mt-4 max-w-xl text-body-lg text-ink-secondary"
-        >
+        <motion.p variants={fadeUp} className="prose-support mt-4">
           {c.support}
         </motion.p>
 
         <SurfacePreviews />
 
-        <motion.p
-          variants={fadeUp}
-          className="mt-16 eyebrow text-ink-tertiary"
-        >
+        <motion.p variants={fadeUp} className="mt-16 eyebrow">
           Deep links
         </motion.p>
         <nav aria-label="Product surfaces" className="mt-4 flex flex-col">

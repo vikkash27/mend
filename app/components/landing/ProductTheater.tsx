@@ -49,21 +49,19 @@ export function ProductTheater({ className }: { className?: string }) {
 
   return (
     <div
-      className={`relative flex h-full min-h-[24rem] flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_28px_60px_-36px_rgba(28,25,23,0.45)] sm:min-h-[30rem] ${className ?? ""}`}
+      className={`relative flex h-full min-h-[24rem] flex-col overflow-hidden rounded-2xl border border-line bg-wash shadow-[0_28px_60px_-36px_rgba(28,25,23,0.45)] sm:min-h-[30rem] ${className ?? ""}`}
       aria-hidden="true"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,var(--color-wash-strong)_0%,transparent_55%),radial-gradient(ellipse_at_100%_80%,var(--color-severity-red-bg)_0%,transparent_45%)] opacity-80" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_18%_0%,var(--color-signal-soft)_0%,transparent_50%),radial-gradient(ellipse_at_100%_80%,var(--color-wash-strong)_0%,transparent_45%)]" />
 
-      <div className="relative flex items-center justify-between gap-3 border-b border-line px-5 py-3 sm:px-6">
+      <div className="relative flex items-center justify-between gap-3 border-b border-line bg-raised/70 px-5 py-3 sm:px-6">
         <div className="flex items-center gap-2 text-ink">
           <MendMark size="sm" />
-          <p className="text-meta font-medium tracking-[0.08em] text-ink-tertiary uppercase">
-            Live product
-          </p>
+          <p className="eyebrow">Live product</p>
           {!reduce ? (
             <span className="relative ml-1 flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-severity-green-fg opacity-40" />
-              <span className="relative inline-flex size-2 rounded-full bg-severity-green-fg" />
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-signal opacity-40" />
+              <span className="relative inline-flex size-2 rounded-full bg-signal" />
             </span>
           ) : null}
         </div>
@@ -72,7 +70,7 @@ export function ProductTheater({ className }: { className?: string }) {
 
       <div className="relative h-0.5 w-full bg-line">
         <motion.div
-          className="absolute inset-y-0 left-0 bg-ink"
+          className="absolute inset-y-0 left-0 bg-signal"
           animate={{ width: `${((activeIndex + 1) / BEATS.length) * 100}%` }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         />
@@ -89,7 +87,7 @@ export function ProductTheater({ className }: { className?: string }) {
           ) : null}
         </AnimatePresence>
 
-        <p className="relative mt-4 text-center text-meta font-medium tracking-wide text-ink-tertiary">
+        <p className="relative mt-4 text-center text-meta font-medium tracking-wide text-ink-secondary">
           {activeMeta.punchline}
         </p>
       </div>

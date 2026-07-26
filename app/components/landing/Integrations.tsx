@@ -37,10 +37,7 @@ export function Integrations() {
         >
           {c.title}
         </motion.h2>
-        <motion.p
-          variants={fadeUp}
-          className="mt-4 max-w-xl text-body-lg text-ink-secondary"
-        >
+        <motion.p variants={fadeUp} className="prose-support mt-4">
           {c.support}
         </motion.p>
 

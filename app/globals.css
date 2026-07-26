@@ -15,11 +15,17 @@
   --color-line: #e7e2dc;
   --color-line-strong: #d8d1c7;
   --color-ink: #1c1917;
-  --color-ink-secondary: #57534e;
-  --color-ink-tertiary: #78716c;
+  /* Secondary/tertiary stepped for judge readability — not the same grey twice. */
+  --color-ink-secondary: #3f3a36;
+  --color-ink-tertiary: #6b645c;
 
-  /* The only saturated colours in the product. Must stay in sync with
-     lib/ui/severity.ts, which is the source of truth for severity rendering. */
+  /* Marketing / narrative signal — clinical teal, never purple. Severity
+     remains the only saturated colour on clinical product surfaces. */
+  --color-signal: #0d5c5e;
+  --color-signal-soft: #d9ecec;
+  --color-signal-fg: #0a4a4c;
+
+  /* Severity palette — must stay in sync with lib/ui/severity.ts. */
   --color-severity-green-fg: #15803d;
   --color-severity-green-bg: #f0fdf4;
   --color-severity-green-border: #bbf7d0;
@@ -60,15 +66,15 @@
   --text-5xl--line-height: 1.03;
 
   /* Semantic scale. Serif never renders below --text-subhead. */
-  --text-display: 4rem;
+  --text-display: 4.5rem;
   --text-display--line-height: 1.02;
-  --text-display--letter-spacing: -0.025em;
-  --text-title: 2.75rem;
-  --text-title--line-height: 1.08;
-  --text-title--letter-spacing: -0.02em;
-  --text-heading: 2rem;
-  --text-heading--line-height: 1.18;
-  --text-heading--letter-spacing: -0.015em;
+  --text-display--letter-spacing: -0.03em;
+  --text-title: 3rem;
+  --text-title--line-height: 1.06;
+  --text-title--letter-spacing: -0.025em;
+  --text-heading: 2.125rem;
+  --text-heading--line-height: 1.16;
+  --text-heading--letter-spacing: -0.018em;
   --text-subhead: 1.5rem;
   --text-subhead--line-height: 1.3;
   --text-subhead--letter-spacing: -0.01em;
@@ -225,8 +231,16 @@
   line-height: var(--text-eyebrow--line-height);
   letter-spacing: var(--text-eyebrow--letter-spacing);
   text-transform: uppercase;
-  font-weight: 500;
-  color: var(--color-ink-tertiary);
+  font-weight: 600;
+  color: var(--color-signal-fg);
+}
+
+@utility prose-support {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-lg);
+  line-height: var(--text-body-lg--line-height);
+  color: var(--color-ink-secondary);
+  max-width: 38rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

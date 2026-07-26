@@ -25,7 +25,7 @@ export function LandingPage() {
     <main id="top" className="relative min-h-dvh overflow-x-hidden bg-paper">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,var(--color-wash)_0%,transparent_50%),radial-gradient(ellipse_at_90%_30%,var(--color-wash-strong)_0%,transparent_40%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_12%_0%,var(--color-signal-soft)_0%,transparent_42%),radial-gradient(ellipse_at_90%_20%,var(--color-wash-strong)_0%,transparent_45%),radial-gradient(ellipse_at_50%_100%,var(--color-wash)_0%,transparent_40%)]"
       />
       <div className="relative">
         <LandingNav />
