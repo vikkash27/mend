@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bluetooth, FileText, Loader2, Watch } from "lucide-react";
+import { Bluetooth, FileText, Loader2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SeverityChip } from "@/components/ui/severity-chip";
+import { KardiaSensorDrawing, WatchDrawing } from "./DeviceIllustrations";
 import { landingCopy } from "./copy";
 import { useLandingMotion } from "./motion";
 
@@ -89,7 +90,7 @@ function DeviceDemoShell({
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_0%_0%,var(--color-wash-strong)_0%,transparent_45%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_0%_0%,var(--color-signal-soft)_0%,transparent_45%),radial-gradient(ellipse_at_100%_0%,var(--color-wash-strong)_0%,transparent_40%)]"
       />
       <div className="relative flex items-center gap-1.5 border-b border-line bg-gradient-to-b from-wash to-wash/60 px-4 py-2.5">
         <span className="size-2 rounded-full bg-line-strong" />
@@ -152,9 +153,12 @@ function KardiaWalkthrough({ reduce }: { reduce: boolean }) {
     <div className="grid h-full gap-3 sm:grid-cols-2">
       {/* Capture */}
       <div className="flex flex-col rounded-xl border border-line bg-wash/40 p-3">
-        <p className="text-meta font-medium tracking-wide text-ink-tertiary uppercase">
-          Capture · Kardia PDF
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-meta font-medium tracking-wide text-ink-tertiary uppercase">
+            Capture · Kardia PDF
+          </p>
+          <KardiaSensorDrawing className="h-8 w-auto opacity-80" />
+        </div>
         <div className="relative mt-3 flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-paper p-3 text-center">
           <AnimatePresence mode="wait">
             {extracting ? (
@@ -187,6 +191,10 @@ function KardiaWalkthrough({ reduce }: { reduce: boolean }) {
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center gap-2"
               >
+                <KardiaSensorDrawing
+                  className="h-12 w-auto"
+                  pulse={dropping && !reduce}
+                />
                 <motion.div
                   animate={
                     dropping
@@ -199,7 +207,7 @@ function KardiaWalkthrough({ reduce }: { reduce: boolean }) {
                   <span className="text-meta text-ink">Margaret_rest_6L.pdf</span>
                 </motion.div>
                 <p className="text-meta text-ink-secondary">
-                  {dropping ? "Dropping…" : "Drop PDF to upload"}
+                  {dropping ? "Dropping…" : "Drop PDF from the 6L sensor"}
                 </p>
               </motion.div>
             )}
@@ -307,20 +315,26 @@ function WatchWalkthrough({ reduce }: { reduce: boolean }) {
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-severity-green-fg opacity-40" />
                     <span className="relative inline-flex size-2 rounded-full bg-severity-green-fg" />
                   </span>
-                  <p className="text-[10px] font-medium text-ink">Garmin · synced</p>
+                  <p className="text-[10px] font-medium text-ink">Watch · synced</p>
                 </div>
-                <div className="mt-4 flex items-end gap-1.5">
+                <div className="mt-2 flex items-center justify-center">
+                  <WatchDrawing
+                    className="h-16 w-auto"
+                    pulse={!reduce}
+                    bpm={bpm}
+                  />
+                </div>
+                <div className="mt-1 flex items-end justify-center gap-1.5">
                   <motion.p
                     key={bpm}
                     initial={reduce ? false : { opacity: 0.45, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="numeric text-4xl leading-none tracking-tight text-ink"
+                    className="numeric text-3xl leading-none tracking-tight text-ink"
                   >
                     {bpm}
                   </motion.p>
                   <p className="pb-0.5 text-[11px] text-ink-tertiary">bpm</p>
                 </div>
-                <HrSpark reduce={reduce} />
                 <p className="mt-auto pt-2 text-[10px] leading-snug text-ink-secondary">
                   Streaming from your watch to Mend.
                 </p>
@@ -336,7 +350,7 @@ function WatchWalkthrough({ reduce }: { reduce: boolean }) {
                 <motion.div
                   animate={
                     pairing
-                      ? { scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }
+                      ? { scale: [1, 1.04, 1], opacity: [0.75, 1, 0.75] }
                       : { scale: 1 }
                   }
                   transition={
@@ -344,13 +358,14 @@ function WatchWalkthrough({ reduce }: { reduce: boolean }) {
                       ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" }
                       : undefined
                   }
-                  className="flex size-11 items-center justify-center rounded-full border border-line bg-wash"
+                  className="relative"
                 >
+                  <WatchDrawing className="h-[4.5rem] w-auto" pulse={pairing} />
                   {pairing ? (
-                    <Bluetooth className="size-5 text-ink" />
-                  ) : (
-                    <Watch className="size-5 text-ink-secondary" />
-                  )}
+                    <span className="absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-line bg-raised">
+                      <Bluetooth className="size-3.5 text-signal" />
+                    </span>
+                  ) : null}
                 </motion.div>
                 <p className="text-[11px] text-ink">
                   {pairing ? "Linking watch…" : "Connect your watch"}
