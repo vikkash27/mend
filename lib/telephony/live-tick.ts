@@ -28,12 +28,15 @@ export async function runLiveTick(args: {
 
     const priorBiomarkers = session.biomarkers;
 
+    let skipSnapshot =
+      session.status === "finalizing" ||
+      session.status === "completed" ||
+      session.status === "error";
+
     const conversation = await fetchConversationDetails({
       conversationId: args.conversationId,
       fetchImpl: args.fetchImpl,
     });
-
-    let skipSnapshot = false;
 
     if (conversation.status === "ok") {
       updateLiveSession(args.conversationId, { turns: conversation.turns });

@@ -119,6 +119,34 @@ describe("runLiveTick", () => {
     expect(analyzeSnapshot).not.toHaveBeenCalled();
   });
 
+  it("skips snapshot when session is finalizing even if conversation fetch fails", async () => {
+    process.env.ELEVENLABS_API_KEY = "xi_test";
+    upsertLiveSession({
+      conversationId: CONVERSATION_ID,
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession(CONVERSATION_ID, {
+      status: "finalizing",
+      biomarkers: readyBiomarkers,
+    });
+
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response("upstream error", { status: 503 }),
+    );
+    const analyzeSnapshot = vi.fn();
+
+    await runLiveTick({
+      conversationId: CONVERSATION_ID,
+      nowIso: NOW,
+      fetchImpl,
+      analyzeSnapshot,
+    });
+
+    expect(analyzeSnapshot).not.toHaveBeenCalled();
+    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("finalizing");
+    expect(getLiveSession(CONVERSATION_ID)?.biomarkers).toEqual(readyBiomarkers);
+  });
+
   it("runs snapshot when conversation fetch fails and keeps prior ready biomarkers", async () => {
     process.env.ELEVENLABS_API_KEY = "xi_test";
     upsertLiveSession({
