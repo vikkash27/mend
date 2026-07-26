@@ -1,7 +1,7 @@
 # Mend — Live Voice Call Data
 
 **Design spec · 2026-07-26**  
-**Status:** Approved in conversation; awaiting user review of this file, then implementation plan  
+**Status:** Implemented  
 **Audience:** Demo engineers making `/call` and the clinician chart functional with real live data  
 **Builds on:** `2026-07-25-amplifier-voice-biomarkers-design.md`, `2026-07-25-live-cohesive-demo-design.md`  
 **Does not revive:** Amplifier WebSocket streaming (`docs/amplifier-streaming-spike.md` DROP stands); Thymia

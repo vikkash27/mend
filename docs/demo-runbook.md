@@ -187,6 +187,17 @@ threshold can see it, and the trend engine projects when she crosses the boundar
 the most intellectually differentiated thing in the build and the part a physician judge will
 recognise fastest.
 
+### Live `/call` data
+
+After **Call now**, open `/call` for the fullscreen stage (patient Live on the chart remains the
+primary path). With an active ElevenLabs conversation, real transcript turns replace the
+scripted timeline, and Amplifier biomarkers refresh on a ~15s server cadence. A compact call
+log appears on the stage; the full history is on Margaret's clinician chart.
+
+If there is no active call — or ElevenLabs / Amplifier keys are missing — `/call` falls back to
+the polished fixture Margaret stage. That idle path is intentional; do not treat it as a
+failure during rehearsal without keys.
+
 ## Fallbacks — one for every step
 
 | If this fails | Do this |

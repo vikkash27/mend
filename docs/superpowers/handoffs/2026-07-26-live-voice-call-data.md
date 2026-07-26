@@ -52,9 +52,9 @@ Local SDD scratch (gitignored, may be missing on a fresh clone):
 | 9. CallStage live UI + readout + compact log | **Done** | Live clock from last event; hide play hint in liveMode |
 | 10. Clinician CallHistory + live biomarker bind | **Done** | Overview + Audit subsection; no new tab |
 | 11. Finalizing → post-call analyze | **Done (fix committed)** | Demotion race fix: skip if ready+final or pending; re-read before persist; never write demoting decision |
-| 12. Docs + full verification | **Not started** | Update `docs/demo-runbook.md`; mark spec status; run full `npm test` + `npx tsc --noEmit` |
+| 12. Docs + full verification | **Done** | Runbook Live `/call` data subsection; spec status → Implemented; `npm test` 688/688 + vignettes 23/23; `npx tsc --noEmit` clean |
 
-**Resume here:** Task 12, then whole-branch review + finishing-a-development-branch.
+**Resume here:** Whole-branch review + finishing-a-development-branch.
 
 ---
 
@@ -99,29 +99,25 @@ UI:
 
 ## Open items / known gaps
 
-1. **Task 12 incomplete** — runbook + full suite verification + push/PR status update.
-2. **Plan-mandated duplication** — `analyze-live-snapshot.ts` duplicates submit/poll/map from `analyze-checkin.ts` (reviewer Important, plan-mandated; human can choose extract shared helper later).
-3. **Live clock is turn-stepped** — header holds between turns (Minor).
-4. **`getLiveSession()` multi-session preference** lightly tested (Minor).
-5. **Env keys** — live path needs `ELEVENLABS_*`, `AMPLIFIER_*`, optionally Supabase; without keys, fixture Margaret still works.
-6. **Mid-call audio** — ElevenLabs audio GET may be unavailable until hangup; during-call Amplifier is best-effort; fail-open keeps last good snapshot.
-7. **Do not** revive Amplifier WebSocket streaming or Thymia.
+1. **Plan-mandated duplication** — `analyze-live-snapshot.ts` duplicates submit/poll/map from `analyze-checkin.ts` (reviewer Important, plan-mandated; human can choose extract shared helper later).
+2. **Live clock is turn-stepped** — header holds between turns (Minor).
+3. **`getLiveSession()` multi-session preference** lightly tested (Minor).
+4. **Env keys** — live path needs `ELEVENLABS_*`, `AMPLIFIER_*`, optionally Supabase; without keys, fixture Margaret still works.
+5. **Mid-call audio** — ElevenLabs audio GET may be unavailable until hangup; during-call Amplifier is best-effort; fail-open keeps last good snapshot.
+6. **Do not** revive Amplifier WebSocket streaming or Thymia.
 
 ---
 
 ## How to continue (recommended)
 
 ```bash
-git fetch origin cursor/live-voice-call-data-333c
+git fetch fork cursor/live-voice-call-data-333c
 git checkout cursor/live-voice-call-data-333c
-git pull origin cursor/live-voice-call-data-333c
+git pull fork cursor/live-voice-call-data-333c
 
-# Execute Task 12 from the plan
-# Then: npm test && npx tsc --noEmit
-# Update PR body; optional whole-branch review
+# Whole-branch review + finishing-a-development-branch
+# Update PR body if needed
 ```
-
-Use **subagent-driven-development** with model **`cursor-grok-4.5-high`** (user preference for this thread). Plan path: `docs/superpowers/plans/2026-07-26-live-voice-call-data.md` Task 12.
 
 Clinical invariants (do not violate):
 - LLM never chooses escalation
@@ -131,7 +127,8 @@ Clinical invariants (do not violate):
 
 ---
 
-## Verification before handoff push
+## Verification (Task 12)
 
-- Focused: `live-finalize` + `live-tick` tests passing after demotion fix
-- Full suite: **not re-run in this handoff turn** — next agent should run `npm test` + `npx tsc --noEmit` as Task 12
+- `npm test` — 76 files / 688 tests passed; posttest vignettes 23/23
+- `npx tsc --noEmit` — clean
+- Docs: `docs/demo-runbook.md` Live `/call` data subsection; spec status **Implemented**
