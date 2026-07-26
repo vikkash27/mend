@@ -4,6 +4,7 @@ import { fetchDemoPatient } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
 import { lastCheckinSummary } from "@/lib/memory/last-checkin";
 import { startCheckInCall, type StartCheckInCallResult } from "@/lib/telephony/call";
+import { upsertLiveSession } from "@/lib/telephony/live-session";
 
 /**
  * POST /api/call — the button that makes the phone ring on stage.
@@ -123,6 +124,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     dayPostOp,
     lastCheckinSummary: summary,
   });
+
+  if (result.status === "sent" && result.conversationId) {
+    upsertLiveSession({
+      conversationId: result.conversationId,
+      patientId: patientId ?? "margaret-ellison",
+    });
+  }
 
   return NextResponse.json(
     body.source !== undefined ? { ...result, source: body.source } : result,

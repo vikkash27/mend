@@ -26,6 +26,9 @@ describe("POST /api/call", () => {
     for (const key of ENV_KEYS) {
       delete process.env[key];
     }
+    vi.resetModules();
+    vi.doUnmock("@/lib/telephony/call");
+    vi.doUnmock("@/lib/telephony/live-session");
   });
 
   it("never throws on a missing body", async () => {
@@ -96,5 +99,42 @@ describe("POST /api/call", () => {
     expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.source).toBeUndefined();
+  });
+
+  it("registers a live session when an outbound call is sent with a conversation id", async () => {
+    process.env.DEMO_PATIENT_PHONE = "+14155551234";
+
+    const startCheckInCall = vi.fn().mockResolvedValue({
+      status: "sent",
+      conversationId: "conv_live",
+    });
+    const upsertLiveSession = vi.fn();
+
+    vi.doMock("@/lib/telephony/call", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/telephony/call")>(
+        "@/lib/telephony/call",
+      );
+      return {
+        ...actual,
+        startCheckInCall,
+      };
+    });
+    vi.doMock("@/lib/telephony/live-session", () => ({
+      upsertLiveSession,
+    }));
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json).toEqual({
+      status: "sent",
+      conversationId: "conv_live",
+    });
+    expect(upsertLiveSession).toHaveBeenCalledWith({
+      conversationId: "conv_live",
+      patientId: "margaret-ellison",
+    });
   });
 });
