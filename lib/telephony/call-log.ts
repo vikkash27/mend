@@ -82,7 +82,7 @@ export function prependActiveSession(
   rows: CallLogRow[],
   session: LiveCallSession | null,
 ): CallLogRow[] {
-  if (!session || (session.status !== "active" && session.status !== "finalizing")) {
+  if (session?.status !== "active") {
     return rows;
   }
   return [rowFromActiveSession(session), ...rows];

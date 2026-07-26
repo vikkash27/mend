@@ -96,4 +96,24 @@ describe("prependActiveSession", () => {
 
     expect(prependActiveSession(existing, null)).toEqual(existing);
   });
+
+  it("does not prepend when session is finalizing", () => {
+    const existing = callLogFromCheckins([
+      { id: "chk_1", created_at: "2026-07-26T09:00:00.000Z", transcript: "Done." },
+    ]);
+
+    const session: LiveCallSession = {
+      conversationId: "conv_finalizing",
+      patientId: "margaret-ellison",
+      status: "finalizing",
+      startedAt: "2026-07-26T10:05:00.000Z",
+      updatedAt: "2026-07-26T10:06:00.000Z",
+      turns: [{ role: "user", text: "Goodbye." }],
+      biomarkers: null,
+      lastTickAt: null,
+      tickInFlight: false,
+    };
+
+    expect(prependActiveSession(existing, session)).toEqual(existing);
+  });
 });
