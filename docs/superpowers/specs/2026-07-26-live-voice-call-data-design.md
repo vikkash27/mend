@@ -211,7 +211,8 @@ Existing orchestration:
 | Final analyze fails | Check-in persisted; prior decision kept |
 | Supabase missing | In-memory live session; call log from roster/fixtures where needed |
 
-**UX status enum:** `idle` · `active` · `analyzing` · `finalizing` · `completed` · `error`  
+**Session status:** `active` · `finalizing` · `completed` · `error` (plus API-level `idle` when no session).  
+**UI-derived:** `analyzing` when `tickInFlight` or biomarkers `pending` while session is `active`.  
 Severity presentation still via `lib/ui/severity.ts` only.
 
 ---
