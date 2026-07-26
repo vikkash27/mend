@@ -19,10 +19,24 @@ export type LiveCallSession = {
 
 export const LIVE_TICK_INTERVAL_MS = 15_000;
 
+/** How long a completed session stays visible via getLiveSession() (no id). */
+export const LIVE_COMPLETED_VISIBLE_MS = 45_000;
+
 const sessions = new Map<string, LiveCallSession>();
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function isCompletedVisible(session: LiveCallSession, nowMs: number): boolean {
+  if (session.status !== "completed") {
+    return false;
+  }
+  const completedAt = Date.parse(session.updatedAt);
+  if (Number.isNaN(completedAt)) {
+    return false;
+  }
+  return nowMs - completedAt < LIVE_COMPLETED_VISIBLE_MS;
 }
 
 export function upsertLiveSession(args: {
@@ -55,6 +69,7 @@ export function getLiveSession(conversationId?: string): LiveCallSession | null 
     return sessions.get(conversationId) ?? null;
   }
 
+  const nowMs = Date.now();
   let bestActive: LiveCallSession | null = null;
   let bestFinalizing: LiveCallSession | null = null;
   let bestCompleted: LiveCallSession | null = null;
@@ -68,9 +83,9 @@ export function getLiveSession(conversationId?: string): LiveCallSession | null 
       if (!bestFinalizing || session.startedAt > bestFinalizing.startedAt) {
         bestFinalizing = session;
       }
-    } else if (session.status === "completed") {
-      // Keep completed visible on poll until the chart can bind final biomarkers
-      // (or refresh RSC props) without a full navigation.
+    } else if (isCompletedVisible(session, nowMs)) {
+      // Briefly keep completed visible so PatientChart can bind phase:final
+      // biomarkers and router.refresh(); then fall back to idle/fixture.
       if (!bestCompleted || session.startedAt > bestCompleted.startedAt) {
         bestCompleted = session;
       }

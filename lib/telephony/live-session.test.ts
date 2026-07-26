@@ -1,15 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   beginTick,
   clearLiveSessionsForTests,
   endTick,
   getLiveSession,
+  LIVE_COMPLETED_VISIBLE_MS,
   LIVE_TICK_INTERVAL_MS,
   updateLiveSession,
   upsertLiveSession,
 } from "./live-session";
 
-afterEach(() => clearLiveSessionsForTests());
+afterEach(() => {
+  clearLiveSessionsForTests();
+  vi.useRealTimers();
+});
 
 describe("live-session store", () => {
   it("upserts an active session and retrieves it as current", () => {
@@ -76,5 +80,71 @@ describe("live-session store", () => {
 
     expect(getLiveSession()?.conversationId).toBe("conv_done");
     expect(getLiveSession()?.biomarkers?.phase).toBe("final");
+  });
+
+  it("stops returning completed sessions after the visibility TTL (idle for API)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T10:00:00.000Z"));
+
+    upsertLiveSession({
+      conversationId: "conv_done",
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession("conv_done", {
+      status: "completed",
+      biomarkers: {
+        status: "ready",
+        phase: "final",
+        conversationId: "conv_done",
+        mapped: {
+          quality: "ok",
+          respiratory: { level: "moderate", score: 0.4 },
+          cognitive: { level: "low", score: 0.2 },
+          source: "amplifier",
+        },
+      },
+    });
+
+    expect(getLiveSession()?.conversationId).toBe("conv_done");
+
+    vi.setSystemTime(
+      new Date(Date.parse("2026-07-26T10:00:00.000Z") + LIVE_COMPLETED_VISIBLE_MS - 1),
+    );
+    expect(getLiveSession()?.conversationId).toBe("conv_done");
+
+    vi.setSystemTime(
+      new Date(Date.parse("2026-07-26T10:00:00.000Z") + LIVE_COMPLETED_VISIBLE_MS),
+    );
+    expect(getLiveSession()).toBeNull();
+    // By-id lookup still sees the stored session (finalize/tick/chart bind).
+    expect(getLiveSession("conv_done")?.status).toBe("completed");
+  });
+
+  it("prefers active then finalizing over a still-visible completed session", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T10:00:00.000Z"));
+
+    upsertLiveSession({
+      conversationId: "conv_done",
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession("conv_done", { status: "completed" });
+
+    vi.setSystemTime(new Date("2026-07-26T10:00:01.000Z"));
+    upsertLiveSession({
+      conversationId: "conv_finalizing",
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession("conv_finalizing", { status: "finalizing" });
+
+    expect(getLiveSession()?.conversationId).toBe("conv_finalizing");
+
+    vi.setSystemTime(new Date("2026-07-26T10:00:02.000Z"));
+    upsertLiveSession({
+      conversationId: "conv_active",
+      patientId: "margaret-ellison",
+    });
+
+    expect(getLiveSession()?.conversationId).toBe("conv_active");
   });
 });
