@@ -1,12 +1,13 @@
 import { analyzeLiveVoiceSnapshot } from "@/lib/amplifier/analyze-live-snapshot";
 import { analyzeCheckinVoiceBiomarkers } from "@/lib/amplifier/analyze-checkin";
 import { maybeEscalateAfterBiomarkers } from "@/lib/amplifier/caregiver-escalate";
-import type { Decision, Symptoms, VitalsReading } from "@/lib/clinical/types";
+import type { Decision, Severity, Symptoms, VitalsReading } from "@/lib/clinical/types";
 import {
   findCheckinByVoiceConversationId,
   updateCheckinAfterBiomarkers,
 } from "@/lib/db/queries";
 import { getSupabaseClient } from "@/lib/db/supabase";
+import type { VoiceBiomarkersRecord } from "@/lib/amplifier/types";
 import {
   getLiveSession,
   type LiveCallSession,
@@ -19,11 +20,16 @@ export type LiveFinalizeCheckinMatch = {
   symptoms: Symptoms;
   vitals: VitalsReading;
   priorDecision: Decision;
+  /** From check-in `voice_biomarkers` — used to skip redundant finalize analyze. */
+  voiceBiomarkersStatus?: VoiceBiomarkersRecord["status"];
+  voiceBiomarkersPhase?: VoiceBiomarkersRecord["phase"];
 };
 
 export type TriggerCheckinAnalyzeArgs = LiveFinalizeCheckinMatch & {
   conversationId: string;
 };
+
+const LEVEL_RANK: Record<Severity, number> = { green: 0, amber: 1, red: 2 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -63,6 +69,38 @@ function parseSymptoms(value: unknown): Symptoms {
   return value as Symptoms;
 }
 
+function parseVoiceBiomarkersMeta(value: unknown): {
+  voiceBiomarkersStatus?: VoiceBiomarkersRecord["status"];
+  voiceBiomarkersPhase?: VoiceBiomarkersRecord["phase"];
+} {
+  if (!isRecord(value)) return {};
+  const status = value.status;
+  const phase = value.phase;
+  return {
+    ...(status === "pending" ||
+    status === "ready" ||
+    status === "unavailable" ||
+    status === "error"
+      ? { voiceBiomarkersStatus: status }
+      : {}),
+    ...(phase === "during" || phase === "final"
+      ? { voiceBiomarkersPhase: phase }
+      : {}),
+  };
+}
+
+/**
+ * Skip re-analyze when check-in already has authoritative final biomarkers
+ * (or analyze already in flight from `/api/checkin`).
+ */
+export function shouldSkipCheckinAnalyze(match: LiveFinalizeCheckinMatch): boolean {
+  if (match.voiceBiomarkersStatus === "pending") return true;
+  return (
+    match.voiceBiomarkersStatus === "ready" &&
+    match.voiceBiomarkersPhase === "final"
+  );
+}
+
 /** Map a check-in row into analyze inputs; null when clinical fields are unusable. */
 export function checkinRowToAnalyzeMatch(row: {
   id: string;
@@ -70,6 +108,7 @@ export function checkinRowToAnalyzeMatch(row: {
   symptoms: unknown;
   vitals: unknown;
   decision: unknown;
+  voice_biomarkers?: unknown;
 }): LiveFinalizeCheckinMatch | null {
   const priorDecision = parseDecision(row.decision);
   const vitals = parseVitals(row.vitals);
@@ -80,6 +119,7 @@ export function checkinRowToAnalyzeMatch(row: {
     symptoms: parseSymptoms(row.symptoms),
     vitals,
     priorDecision,
+    ...parseVoiceBiomarkersMeta(row.voice_biomarkers),
   };
 }
 
@@ -97,6 +137,7 @@ async function defaultFindCheckinByConversationId(
 /**
  * Fire-and-forget post-call analyze + persist. Mirrors `/api/checkin` and
  * `/api/biomarkers/analyze` without blocking the live tick / triage path.
+ * Never demotes a decision already persisted by a concurrent check-in analyze.
  */
 export function defaultTriggerCheckinAnalyze(args: TriggerCheckinAnalyzeArgs): void {
   void (async () => {
@@ -109,31 +150,58 @@ export function defaultTriggerCheckinAnalyze(args: TriggerCheckinAnalyzeArgs): v
         priorDecision: args.priorDecision,
       });
 
-      let sbar: string | null = null;
-      try {
-        sbar = await maybeEscalateAfterBiomarkers({
-          checkinId: args.checkinId,
-          dayPostOp: args.dayPostOp,
-          symptoms: args.symptoms,
-          vitals: args.vitals,
-          ecg: undefined,
-          decision: result.decision,
-          priorDecision: args.priorDecision,
-          decisionChanged: result.decisionChanged,
-        });
-      } catch (escalateErr) {
-        console.warn(
-          "[telephony/live-finalize] biomarker caregiver escalate failed open:",
-          escalateErr,
-        );
-      }
-
       const supabase = getSupabaseClient();
       if (!supabase) return;
 
+      // Re-read before persist: concurrent `/api/checkin` may have raised severity
+      // after our stale priorDecision snapshot.
+      const latestRow = await findCheckinByVoiceConversationId(
+        supabase,
+        args.conversationId,
+      );
+      const currentDecision =
+        latestRow ? parseDecision(latestRow.decision) : null;
+      const latestMeta = parseVoiceBiomarkersMeta(latestRow?.voice_biomarkers);
+      if (
+        latestMeta.voiceBiomarkersStatus === "pending" ||
+        (latestMeta.voiceBiomarkersStatus === "ready" &&
+          latestMeta.voiceBiomarkersPhase === "final")
+      ) {
+        // Authoritative ready+final (or pending in-flight) landed while we ran —
+        // do not overwrite biomarkers or decision.
+        return;
+      }
+
+      const canRaiseDecision =
+        result.decisionChanged &&
+        result.record.status === "ready" &&
+        (!currentDecision ||
+          LEVEL_RANK[result.decision.level] >= LEVEL_RANK[currentDecision.level]);
+
+      let sbar: string | null = null;
+      if (canRaiseDecision) {
+        try {
+          sbar = await maybeEscalateAfterBiomarkers({
+            checkinId: args.checkinId,
+            dayPostOp: args.dayPostOp,
+            symptoms: args.symptoms,
+            vitals: args.vitals,
+            ecg: undefined,
+            decision: result.decision,
+            priorDecision: currentDecision ?? args.priorDecision,
+            decisionChanged: true,
+          });
+        } catch (escalateErr) {
+          console.warn(
+            "[telephony/live-finalize] biomarker caregiver escalate failed open:",
+            escalateErr,
+          );
+        }
+      }
+
       const ok = await updateCheckinAfterBiomarkers(supabase, args.checkinId, {
         voice_biomarkers: result.record,
-        decision: result.decision,
+        ...(canRaiseDecision ? { decision: result.decision } : {}),
         ...(sbar !== null ? { sbar } : {}),
       });
       if (!ok) {
@@ -149,9 +217,11 @@ export function defaultTriggerCheckinAnalyze(args: TriggerCheckinAnalyzeArgs): v
 
 /**
  * Post-call handoff: final Amplifier snapshot (interim on session) → optional
- * check-in analyze when `voice_biomarkers.conversationId` matches → mark
+ * check-in analyze when `voice_biomarkers.conversationId` matches and check-in
+ * does not already have ready+final (or pending in-flight) biomarkers → mark
  * `completed`. Never invents symptoms; `/api/checkin` remains the persistence
- * entry point when no matching check-in exists.
+ * entry point when no matching check-in exists. Never demotes a persisted
+ * decision via stale priorDecision from lookup time.
  */
 export async function finalizeLiveSession(args: {
   conversationId: string;
@@ -199,7 +269,7 @@ export async function finalizeLiveSession(args: {
 
   try {
     const match = await findCheckin(args.conversationId);
-    if (match) {
+    if (match && !shouldSkipCheckinAnalyze(match)) {
       triggerAnalyze({
         ...match,
         conversationId: args.conversationId,

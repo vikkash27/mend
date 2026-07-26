@@ -134,6 +134,60 @@ describe("finalizeLiveSession", () => {
     expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
   });
 
+  it("skips analyze when check-in already has ready+final biomarkers", async () => {
+    upsertLiveSession({
+      conversationId: CONVERSATION_ID,
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession(CONVERSATION_ID, { status: "finalizing" });
+
+    const analyzeSnapshot = vi.fn().mockResolvedValue(readyFinalSnapshot);
+    const findCheckin = vi.fn().mockResolvedValue({
+      ...checkinMatch,
+      priorDecision: {
+        level: "amber" as const,
+        action: "Call clinic today",
+        rationale: ["voice.cognitive_high"],
+        firedRules: ["voice.cognitive_high"],
+      },
+      voiceBiomarkersStatus: "ready" as const,
+      voiceBiomarkersPhase: "final" as const,
+    });
+    const triggerAnalyze = vi.fn();
+
+    await finalizeLiveSession({
+      conversationId: CONVERSATION_ID,
+      analyzeSnapshot,
+      findCheckinByConversationId: findCheckin,
+      triggerCheckinAnalyze: triggerAnalyze,
+    });
+
+    expect(findCheckin).toHaveBeenCalledWith(CONVERSATION_ID);
+    expect(triggerAnalyze).not.toHaveBeenCalled();
+    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
+  });
+
+  it("skips analyze when check-in biomarkers are still pending", async () => {
+    upsertLiveSession({
+      conversationId: CONVERSATION_ID,
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession(CONVERSATION_ID, { status: "finalizing" });
+
+    const triggerAnalyze = vi.fn();
+    await finalizeLiveSession({
+      conversationId: CONVERSATION_ID,
+      analyzeSnapshot: vi.fn().mockResolvedValue(readyFinalSnapshot),
+      findCheckinByConversationId: vi.fn().mockResolvedValue({
+        ...checkinMatch,
+        voiceBiomarkersStatus: "pending" as const,
+      }),
+      triggerCheckinAnalyze: triggerAnalyze,
+    });
+
+    expect(triggerAnalyze).not.toHaveBeenCalled();
+  });
+
   it("is a no-op when session is already completed", async () => {
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
