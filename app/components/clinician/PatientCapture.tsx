@@ -2,7 +2,7 @@
 
 import {
   AlertTriangle,
-  FileUp,
+  ChevronDown,
   Loader2,
   Upload,
 } from "lucide-react";
@@ -10,8 +10,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
 import { BleHeartRate } from "@/app/components/BleHeartRate";
 import { Button } from "@/components/ui/button";
-import { SeverityChip } from "@/components/ui/severity-chip";
-import type { Decision, EcgDetermination, EcgReading, TrendFinding } from "@/lib/clinical/types";
+import type { EcgDetermination, EcgReading } from "@/lib/clinical/types";
 import { PLAUSIBLE_RANGES, validateManualVitals } from "@/lib/clinical/vitals";
 import { SCENARIO_META, SCENARIOS } from "@/lib/sim/active-scenario";
 import type { Scenario } from "@/lib/sim/fixtures";
@@ -27,34 +26,6 @@ interface DemoStatus {
   amplifier: boolean;
   missing: string[];
 }
-
-interface CheckinResult {
-  decision: Decision;
-  trendFindings: TrendFinding[];
-  sbar: string | null;
-  symptoms: Record<string, unknown>;
-  vitals?: VitalsReadingLike;
-  ecg?: EcgReading | null;
-  checkinId?: string;
-  conversationId?: string;
-  warnings?: string[];
-  scenario?: Scenario;
-}
-
-/** Loose vitals shape from /api/checkin — enough to re-POST analyze snapshots. */
-type VitalsReadingLike = {
-  timestamp: string;
-  hr?: number;
-  sbp?: number;
-  dbp?: number;
-  tempC?: number;
-  spo2?: number;
-  respRate?: number;
-  painScore?: number;
-  source: "ble_heart_rate" | "manual" | "kardia_6l" | "simulated";
-  deviceLabel?: string;
-  quality: "ok" | "poor" | "stale";
-};
 
 type ActionState =
   | { kind: "idle" }
@@ -179,14 +150,7 @@ export function PatientCapture(props: {
 
   const [ecgState, setEcgState] = useState<ActionState>({ kind: "idle" });
   const [ecgReading, setEcgReading] = useState<EcgReading | null>(null);
-
-  const [transcript, setTranscript] = useState(
-    "I'm a bit short of breath today, and my calf feels sore. Pain is about a four.",
-  );
-  const [checkinState, setCheckinState] = useState<ActionState>({ kind: "idle" });
-  const [checkinResult, setCheckinResult] = useState<CheckinResult | null>(null);
-  const [conversationId, setConversationId] = useState("");
-  const [biomarkersState, setBiomarkersState] = useState<ActionState>({ kind: "idle" });
+  const [stripOpen, setStripOpen] = useState(false);
 
   useEffect(() => {
     if (density !== "full") return;
@@ -355,103 +319,6 @@ export function PatientCapture(props: {
     [patientId],
   );
 
-  const runCheckin = useCallback(async () => {
-    const text = transcript.trim();
-    if (!text) {
-      setCheckinState({ kind: "error", message: "Transcript cannot be empty." });
-      return;
-    }
-    setCheckinResult(null);
-    setBiomarkersState({ kind: "idle" });
-    setCheckinState({ kind: "pending" });
-    const conv = conversationId.trim();
-    try {
-      const res = await fetch("/api/checkin", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          transcript: text,
-          ...(dayPostOp !== undefined ? { dayPostOp } : {}),
-          ...(conv ? { conversationId: conv } : {}),
-        }),
-      });
-      if (!res.ok) {
-        setCheckinState({ kind: "error", message: await readErrorMessage(res) });
-        return;
-      }
-      const json = (await res.json()) as CheckinResult;
-      setCheckinResult(json);
-      if (json.conversationId) {
-        setConversationId(json.conversationId);
-      }
-      const warn =
-        json.warnings && json.warnings.length > 0
-          ? ` ${json.warnings.join(" ")}`
-          : "";
-      const pendingNote =
-        json.conversationId && json.checkinId
-          ? " Voice biomarkers analyzing in background."
-          : "";
-      setCheckinState({
-        kind: "ok",
-        message: `Decision: ${json.decision.level}.${warn}${pendingNote}`,
-      });
-    } catch {
-      setCheckinState({ kind: "error", message: "Could not reach /api/checkin." });
-    }
-  }, [transcript, conversationId, dayPostOp]);
-
-  const runVoiceBiomarkers = useCallback(async () => {
-    const conv = conversationId.trim() || checkinResult?.conversationId;
-    const checkinId = checkinResult?.checkinId;
-    if (!conv || !checkinId || !checkinResult?.vitals) {
-      setBiomarkersState({
-        kind: "error",
-        message:
-          "Need a conversationId and a check-in with checkinId + vitals snapshots.",
-      });
-      return;
-    }
-    setBiomarkersState({ kind: "pending" });
-    try {
-      const res = await fetch("/api/biomarkers/analyze", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          checkinId,
-          conversationId: conv,
-          dayPostOp: dayPostOp ?? 4,
-          symptoms: checkinResult.symptoms,
-          vitals: checkinResult.vitals,
-          ...(checkinResult.ecg ? { ecg: checkinResult.ecg } : {}),
-          priorDecision: checkinResult.decision,
-        }),
-      });
-      if (!res.ok) {
-        setBiomarkersState({ kind: "error", message: await readErrorMessage(res) });
-        return;
-      }
-      const json = (await res.json()) as {
-        record?: { status?: string };
-        decisionChanged?: boolean;
-        decision?: Decision;
-      };
-      setBiomarkersState({
-        kind: "ok",
-        message: `Voice biomarkers ${json.record?.status ?? "done"}${
-          json.decisionChanged && json.decision
-            ? ` · decision now ${json.decision.level}`
-            : ""
-        }.`,
-      });
-    } catch {
-      setBiomarkersState({
-        kind: "error",
-        message: "Could not reach /api/biomarkers/analyze.",
-      });
-    }
-  }, [conversationId, checkinResult, dayPostOp]);
-
   const vitalFields = (
     [
       {
@@ -566,31 +433,56 @@ export function PatientCapture(props: {
                 : ({ kind: "idle" } as ActionState);
 
     return (
-      <section className="space-y-3 rounded-xl border border-line bg-raised p-4 shadow-card">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="eyebrow">Capture</h3>
+      <section className="rounded-md border-2 border-line-strong bg-raised">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <button
+            type="button"
+            aria-expanded={stripOpen}
+            aria-controls={`${formId}-capture-strip`}
+            onClick={() => setStripOpen((open) => !open)}
+            className="inline-flex min-h-11 items-center gap-2 text-left"
+          >
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "size-4 shrink-0 text-ink transition-transform",
+                stripOpen ? "rotate-0" : "-rotate-90",
+              )}
+            />
+            <span className="eyebrow text-ink">Capture</span>
+            <span className="text-meta text-ink-tertiary">
+              Manual vitals · Kardia PDF
+            </span>
+          </button>
           <Link
             href={captureHref(patientId)}
             className="text-label font-medium text-ink underline-offset-4 hover:underline"
           >
-            Open capture
+            Open full capture
           </Link>
         </div>
-        {vitalsInputs}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            onClick={() => void submitVitals()}
-            disabled={vitalsState.kind === "pending"}
+        {stripOpen ? (
+          <div
+            id={`${formId}-capture-strip`}
+            className="space-y-3 border-t-2 border-line-strong px-4 py-4"
           >
-            {vitalsState.kind === "pending" ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : null}
-            Save vitals
-          </Button>
-          {pdfChooser}
-        </div>
-        <StatusLine state={actionError} />
+            {vitalsInputs}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={() => void submitVitals()}
+                disabled={vitalsState.kind === "pending"}
+              >
+                {vitalsState.kind === "pending" ? (
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                ) : null}
+                Save vitals
+              </Button>
+              {pdfChooser}
+            </div>
+            <StatusLine state={actionError} />
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -730,105 +622,6 @@ export function PatientCapture(props: {
         <div className="lg:col-span-2">
           <BleHeartRate />
         </div>
-
-        <Panel title="Check-in from transcript" className="lg:col-span-2">
-          <p className="text-label text-ink-secondary">
-            Free-text stand-in for the voice call. Runs the full check-in pipeline
-            without requiring a live call. Paste an ElevenLabs conversationId to
-            queue voice biomarkers after insert.
-          </p>
-          <label className="block space-y-1.5" htmlFor={`${formId}-transcript`}>
-            <span className="text-label font-medium text-ink">Transcript</span>
-            <textarea
-              id={`${formId}-transcript`}
-              rows={4}
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              className={cn(
-                "w-full rounded-lg border border-line-strong bg-paper px-3 py-2.5 text-body text-ink",
-                "outline-none focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/25",
-              )}
-            />
-          </label>
-          <label className="block space-y-1.5" htmlFor={`${formId}-conversation`}>
-            <span className="text-label font-medium text-ink">
-              Conversation ID (optional)
-            </span>
-            <input
-              id={`${formId}-conversation`}
-              type="text"
-              value={conversationId}
-              onChange={(e) => setConversationId(e.target.value)}
-              placeholder="conv_…"
-              className={cn(
-                "w-full rounded-lg border border-line-strong bg-paper px-3 py-2.5 text-body text-ink",
-                "outline-none focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/25",
-              )}
-            />
-          </label>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              onClick={() => void runCheckin()}
-              disabled={checkinState.kind === "pending"}
-            >
-              {checkinState.kind === "pending" ? (
-                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-              ) : (
-                <FileUp aria-hidden="true" className="size-4" />
-              )}
-              Run check-in
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void runVoiceBiomarkers()}
-              disabled={
-                biomarkersState.kind === "pending" ||
-                !conversationId.trim() ||
-                !checkinResult?.checkinId
-              }
-            >
-              {biomarkersState.kind === "pending" ? (
-                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-              ) : null}
-              Run voice biomarkers
-            </Button>
-          </div>
-          <StatusLine state={checkinState} />
-          <StatusLine state={biomarkersState} />
-
-          {checkinResult ? (
-            <div className="space-y-4 border-t border-line pt-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <SeverityChip level={checkinResult.decision.level} />
-                {checkinResult.decision.condition ? (
-                  <p className="text-label text-ink-secondary">
-                    {checkinResult.decision.condition}
-                  </p>
-                ) : null}
-              </div>
-              <p className="font-heading text-subhead text-ink">
-                {checkinResult.decision.action}
-              </p>
-              {checkinResult.decision.firedRules.length > 0 ? (
-                <p className="numeric text-meta text-ink-tertiary">
-                  Fired: {checkinResult.decision.firedRules.join(", ")}
-                </p>
-              ) : null}
-              {checkinResult.sbar ? (
-                <div className="space-y-2">
-                  <p className="eyebrow">SBAR</p>
-                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-line bg-wash p-4 font-heading text-body text-ink">
-                    {checkinResult.sbar}
-                  </pre>
-                </div>
-              ) : (
-                <p className="text-meta text-ink-tertiary">No SBAR (green decision).</p>
-              )}
-            </div>
-          ) : null}
-        </Panel>
       </div>
     </div>
   );
