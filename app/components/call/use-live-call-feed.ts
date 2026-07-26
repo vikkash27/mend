@@ -40,8 +40,16 @@ function isAnalyzing(session: LiveCallSessionPayload): boolean {
   return session.tickInFlight || session.biomarkers?.status === "pending";
 }
 
-async function fetchLiveCallFeed(): Promise<LiveCallFeed> {
-  const response = await fetch("/api/live-call");
+/** Only apply poll results when this refresh is still the latest generation. */
+export function shouldApplyPollResponse(
+  responseGeneration: number,
+  latestGeneration: number,
+): boolean {
+  return responseGeneration === latestGeneration;
+}
+
+async function fetchLiveCallFeed(signal?: AbortSignal): Promise<LiveCallFeed> {
+  const response = await fetch("/api/live-call", { signal });
   if (!response.ok) {
     throw new Error(`live-call poll failed with status ${response.status}`);
   }
@@ -68,15 +76,25 @@ export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
   const [feed, setFeed] = useState<LiveCallFeed>(idleFeed);
 
   useEffect(() => {
-    let cancelled = false;
+    let latestGeneration = 0;
+    let inFlight: AbortController | null = null;
 
     async function refresh() {
+      inFlight?.abort();
+      const controller = new AbortController();
+      inFlight = controller;
+      const generation = ++latestGeneration;
+
       try {
-        const next = await fetchLiveCallFeed();
-        if (!cancelled) {
-          setFeed(next);
+        const next = await fetchLiveCallFeed(controller.signal);
+        if (!shouldApplyPollResponse(generation, latestGeneration)) {
+          return;
         }
+        setFeed(next);
       } catch {
+        if (controller.signal.aborted) {
+          return;
+        }
         // Keep the last good snapshot on transient poll failures.
       }
     }
@@ -87,7 +105,8 @@ export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
     }, pollMs);
 
     return () => {
-      cancelled = true;
+      latestGeneration += 1;
+      inFlight?.abort();
       window.clearInterval(timer);
     };
   }, [pollMs]);
