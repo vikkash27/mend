@@ -46,4 +46,9 @@ describe("landing copy honesty", () => {
     expect(talkToUsHref()).toMatch(/^mailto:/);
     expect(talkToUsHref()).toContain(LANDING_CONTACT_EMAIL);
   });
+
+  it("exposes a Business case nav tab to the dedicated route", () => {
+    expect(landingCopy.businessCaseCta).toBe("Business case");
+    expect(landingCopy.businessCaseHref).toBe("/business-case");
+  });
 });

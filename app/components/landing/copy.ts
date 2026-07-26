@@ -9,6 +9,8 @@ export const landingCopy = {
   primaryHref: "/clinician",
   secondaryCta: "Patient portal",
   secondaryHref: "/patient",
+  businessCaseCta: "Business case",
+  businessCaseHref: "/business-case",
   contactCta: "Talk to us",
   gap: {
     eyebrow: "The gap",
