@@ -80,7 +80,10 @@ export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
     let inFlight: AbortController | null = null;
 
     async function refresh() {
-      inFlight?.abort();
+      if (inFlight) {
+        return;
+      }
+
       const controller = new AbortController();
       inFlight = controller;
       const generation = ++latestGeneration;
@@ -96,6 +99,10 @@ export function useLiveCallFeed(pollMs = 2500): LiveCallFeed {
           return;
         }
         // Keep the last good snapshot on transient poll failures.
+      } finally {
+        if (inFlight === controller) {
+          inFlight = null;
+        }
       }
     }
 
