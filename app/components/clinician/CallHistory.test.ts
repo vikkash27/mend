@@ -210,17 +210,18 @@ describe("resolveChartVoiceBiomarkers", () => {
     expect(record).toBe(DURING);
   });
 
-  it("falls back to latest check-in final when session phase is not during", () => {
+  it("binds to session final biomarkers so chart updates without navigation", () => {
     const latest = checkin({ id: "chk_1", voiceBiomarkers: FINAL });
+    const sessionFinal = { ...DURING, phase: "final" as const };
     const record = resolveChartVoiceBiomarkers({
       patientId: "margaret-ellison",
       latestCheckin: latest,
       session: {
         patientId: "margaret-ellison",
-        biomarkers: { ...DURING, phase: "final" },
+        biomarkers: sessionFinal,
       },
     });
-    expect(record).toBe(FINAL);
+    expect(record).toBe(sessionFinal);
   });
 
   it("falls back to latest when there is no live session", () => {

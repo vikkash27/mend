@@ -53,4 +53,28 @@ describe("live-session store", () => {
     expect(getLiveSession("conv_1")?.turns).toHaveLength(1);
     expect(getLiveSession("conv_1")?.biomarkers?.phase).toBe("during");
   });
+
+  it("returns the latest completed session when none are active or finalizing", () => {
+    upsertLiveSession({
+      conversationId: "conv_done",
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession("conv_done", {
+      status: "completed",
+      biomarkers: {
+        status: "ready",
+        phase: "final",
+        conversationId: "conv_done",
+        mapped: {
+          quality: "ok",
+          respiratory: { level: "moderate", score: 0.4 },
+          cognitive: { level: "low", score: 0.2 },
+          source: "amplifier",
+        },
+      },
+    });
+
+    expect(getLiveSession()?.conversationId).toBe("conv_done");
+    expect(getLiveSession()?.biomarkers?.phase).toBe("final");
+  });
 });

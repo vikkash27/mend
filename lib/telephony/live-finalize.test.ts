@@ -5,7 +5,10 @@ import {
   updateLiveSession,
   upsertLiveSession,
 } from "./live-session";
-import { finalizeLiveSession } from "./live-finalize";
+import {
+  clearFinalizeHandoffsForTests,
+  finalizeLiveSession,
+} from "./live-finalize";
 
 const CONVERSATION_ID = "conv_finalize";
 
@@ -49,10 +52,11 @@ const checkinMatch = {
 
 afterEach(() => {
   clearLiveSessionsForTests();
+  clearFinalizeHandoffsForTests();
 });
 
 describe("finalizeLiveSession", () => {
-  it("attempts final snapshot then marks session completed", async () => {
+  it("attempts during snapshot then marks session completed when no check-in match", async () => {
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
       patientId: "margaret-ellison",
@@ -80,7 +84,7 @@ describe("finalizeLiveSession", () => {
     expect(triggerAnalyze).not.toHaveBeenCalled();
   });
 
-  it("keeps prior ready biomarkers when final snapshot fails", async () => {
+  it("keeps prior ready biomarkers when final snapshot fails (no check-in)", async () => {
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
       patientId: "margaret-ellison",
@@ -108,14 +112,45 @@ describe("finalizeLiveSession", () => {
     expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
   });
 
-  it("fire-and-forgets check-in analyze when matching conversationId exists", async () => {
+  it("skips during snapshot and stays finalizing when check-in analyze will run", async () => {
+    upsertLiveSession({
+      conversationId: CONVERSATION_ID,
+      patientId: "margaret-ellison",
+    });
+    updateLiveSession(CONVERSATION_ID, {
+      status: "finalizing",
+      biomarkers: readyDuring,
+    });
+
+    const analyzeSnapshot = vi.fn().mockResolvedValue(readyFinalSnapshot);
+    const findCheckin = vi.fn().mockResolvedValue(checkinMatch);
+    const triggerAnalyze = vi.fn();
+
+    const session = await finalizeLiveSession({
+      conversationId: CONVERSATION_ID,
+      analyzeSnapshot,
+      findCheckinByConversationId: findCheckin,
+      triggerCheckinAnalyze: triggerAnalyze,
+    });
+
+    expect(analyzeSnapshot).not.toHaveBeenCalled();
+    expect(findCheckin).toHaveBeenCalledWith(CONVERSATION_ID);
+    expect(triggerAnalyze).toHaveBeenCalledWith({
+      ...checkinMatch,
+      conversationId: CONVERSATION_ID,
+    });
+    expect(session?.status).toBe("finalizing");
+    expect(session?.biomarkers).toEqual(readyDuring);
+  });
+
+  it("does not re-enter analyze handoff while post-call analyze is in flight", async () => {
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
       patientId: "margaret-ellison",
     });
     updateLiveSession(CONVERSATION_ID, { status: "finalizing" });
 
-    const analyzeSnapshot = vi.fn().mockResolvedValue(readyFinalSnapshot);
+    const analyzeSnapshot = vi.fn();
     const findCheckin = vi.fn().mockResolvedValue(checkinMatch);
     const triggerAnalyze = vi.fn();
 
@@ -125,16 +160,18 @@ describe("finalizeLiveSession", () => {
       findCheckinByConversationId: findCheckin,
       triggerCheckinAnalyze: triggerAnalyze,
     });
-
-    expect(findCheckin).toHaveBeenCalledWith(CONVERSATION_ID);
-    expect(triggerAnalyze).toHaveBeenCalledWith({
-      ...checkinMatch,
+    await finalizeLiveSession({
       conversationId: CONVERSATION_ID,
+      analyzeSnapshot,
+      findCheckinByConversationId: findCheckin,
+      triggerCheckinAnalyze: triggerAnalyze,
     });
-    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
+
+    expect(triggerAnalyze).toHaveBeenCalledTimes(1);
+    expect(analyzeSnapshot).not.toHaveBeenCalled();
   });
 
-  it("skips analyze when check-in already has ready+final biomarkers", async () => {
+  it("skips analyze and during snapshot when check-in already has ready+final biomarkers", async () => {
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
       patientId: "margaret-ellison",
@@ -164,6 +201,7 @@ describe("finalizeLiveSession", () => {
 
     expect(findCheckin).toHaveBeenCalledWith(CONVERSATION_ID);
     expect(triggerAnalyze).not.toHaveBeenCalled();
+    expect(analyzeSnapshot).not.toHaveBeenCalled();
     expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
   });
 
@@ -174,10 +212,11 @@ describe("finalizeLiveSession", () => {
     });
     updateLiveSession(CONVERSATION_ID, { status: "finalizing" });
 
+    const analyzeSnapshot = vi.fn();
     const triggerAnalyze = vi.fn();
     await finalizeLiveSession({
       conversationId: CONVERSATION_ID,
-      analyzeSnapshot: vi.fn().mockResolvedValue(readyFinalSnapshot),
+      analyzeSnapshot,
       findCheckinByConversationId: vi.fn().mockResolvedValue({
         ...checkinMatch,
         voiceBiomarkersStatus: "pending" as const,
@@ -186,6 +225,8 @@ describe("finalizeLiveSession", () => {
     });
 
     expect(triggerAnalyze).not.toHaveBeenCalled();
+    expect(analyzeSnapshot).not.toHaveBeenCalled();
+    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
   });
 
   it("is a no-op when session is already completed", async () => {

@@ -57,6 +57,7 @@ export function getLiveSession(conversationId?: string): LiveCallSession | null 
 
   let bestActive: LiveCallSession | null = null;
   let bestFinalizing: LiveCallSession | null = null;
+  let bestCompleted: LiveCallSession | null = null;
 
   for (const session of sessions.values()) {
     if (session.status === "active") {
@@ -67,10 +68,16 @@ export function getLiveSession(conversationId?: string): LiveCallSession | null 
       if (!bestFinalizing || session.startedAt > bestFinalizing.startedAt) {
         bestFinalizing = session;
       }
+    } else if (session.status === "completed") {
+      // Keep completed visible on poll until the chart can bind final biomarkers
+      // (or refresh RSC props) without a full navigation.
+      if (!bestCompleted || session.startedAt > bestCompleted.startedAt) {
+        bestCompleted = session;
+      }
     }
   }
 
-  return bestActive ?? bestFinalizing;
+  return bestActive ?? bestFinalizing ?? bestCompleted;
 }
 
 export function updateLiveSession(

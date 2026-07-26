@@ -116,7 +116,8 @@ export function PatientChart({
   const [activeTab, setActiveTab] = useState<ChartTabId>(initialTab);
   const [callState, setCallState] = useState<CallActionState>({ kind: "idle" });
   const prevLiveActive = useRef(liveActive);
-  /** Keep polling through finalizing until the live-call feed returns idle. */
+  const prevLiveFeedStatus = useRef<string>("idle");
+  /** Keep polling through finalizing until final biomarkers land / feed idles. */
   const [pollLiveFeed, setPollLiveFeed] = useState(liveActive);
 
   useEffect(() => {
@@ -132,10 +133,32 @@ export function PatientChart({
   const liveFeed = useLiveCallFeed(2500, pollLiveFeed);
 
   useEffect(() => {
-    if (!liveActive && liveFeed.status === "idle") {
+    const prevStatus = prevLiveFeedStatus.current;
+    prevLiveFeedStatus.current = liveFeed.status;
+
+    const leftFinalizing =
+      prevStatus === "finalizing" &&
+      (liveFeed.status === "completed" ||
+        liveFeed.status === "idle" ||
+        liveFeed.status === "error");
+    const finalBiomarkersReady =
+      liveFeed.status === "completed" &&
+      liveFeed.session?.biomarkers?.phase === "final";
+
+    // Refresh RSC chart props when post-call analyze finishes so check-in
+    // history / decision reflect final biomarkers without a full navigation.
+    if (leftFinalizing || finalBiomarkersReady) {
+      router.refresh();
+    }
+
+    if (
+      (!liveActive && liveFeed.status === "idle") ||
+      liveFeed.status === "completed" ||
+      liveFeed.status === "error"
+    ) {
       setPollLiveFeed(false);
     }
-  }, [liveActive, liveFeed.status]);
+  }, [liveActive, liveFeed.status, liveFeed.session?.biomarkers?.phase, router]);
 
   useEffect(() => {
     if (initialLiveFocus && liveActive) {

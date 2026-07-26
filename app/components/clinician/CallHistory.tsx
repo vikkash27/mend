@@ -105,8 +105,9 @@ export function withLiveInProgressRow(
 }
 
 /**
- * Bind VoiceBiomarkersPanel to live session biomarkers while phase is
- * "during"; otherwise use the latest check-in's final record.
+ * Bind VoiceBiomarkersPanel to live session biomarkers for this patient
+ * (during-call or post-call final on the session). Fall back to the latest
+ * check-in's record when there is no matching session payload.
  */
 export function resolveChartVoiceBiomarkers(args: {
   patientId: string;
@@ -114,11 +115,7 @@ export function resolveChartVoiceBiomarkers(args: {
   session: Pick<LiveSessionLike, "patientId" | "biomarkers"> | null;
 }): VoiceBiomarkersRecord | undefined {
   const { patientId, latestCheckin, session } = args;
-  if (
-    session &&
-    session.patientId === patientId &&
-    session.biomarkers?.phase === "during"
-  ) {
+  if (session && session.patientId === patientId && session.biomarkers) {
     return session.biomarkers;
   }
   return latestCheckin?.voiceBiomarkers;
