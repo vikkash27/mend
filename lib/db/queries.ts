@@ -358,3 +358,27 @@ export async function updateCheckinAfterBiomarkers(
   }
   return true;
 }
+
+/** Latest check-in whose `voice_biomarkers.conversationId` matches. Used by
+ * live finalize to hand off into post-call analyze without inventing symptoms.
+ * Returns undefined on miss / timeout / error — never throws. */
+export async function findCheckinByVoiceConversationId(
+  supabase: SupabaseClient<Database>,
+  conversationId: string,
+): Promise<CheckinRow | undefined> {
+  const result = await withTimeout(
+    supabase
+      .from("checkins")
+      .select("*")
+      .contains("voice_biomarkers", { conversationId })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    QUERY_TIMEOUT_MS,
+  );
+
+  if (!result || result.error || !result.data) {
+    return undefined;
+  }
+  return result.data;
+}

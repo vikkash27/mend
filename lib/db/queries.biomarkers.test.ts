@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { VoiceBiomarkersRecord } from "../amplifier/types";
 import type { Database } from "./supabase";
-import { updateCheckinAfterBiomarkers } from "./queries";
+import {
+  findCheckinByVoiceConversationId,
+  updateCheckinAfterBiomarkers,
+} from "./queries";
 
 function mockClientForUpdateEq() {
   const eq = vi.fn().mockResolvedValue({ data: null, error: null });
@@ -71,5 +74,52 @@ describe("updateCheckinAfterBiomarkers", () => {
         voice_biomarkers: { status: "pending", conversationId: "conv-1" },
       }),
     ).resolves.toBe(false);
+  });
+});
+
+describe("findCheckinByVoiceConversationId", () => {
+  it("queries checkins by voice_biomarkers conversationId containment", async () => {
+    const row = {
+      id: "checkin-9",
+      patient_id: "p1",
+      created_at: "2026-07-26T10:00:00.000Z",
+      day_post_op: 3,
+      transcript: "ok",
+      symptoms: {},
+      vitals: {},
+      decision: { level: "green" },
+      trend_findings: [],
+      sbar: null,
+      voice_biomarkers: { status: "pending", conversationId: "conv-xyz" },
+    };
+    const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
+    const limit = vi.fn(() => ({ maybeSingle }));
+    const order = vi.fn(() => ({ limit }));
+    const contains = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ contains }));
+    const from = vi.fn(() => ({ select }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    const found = await findCheckinByVoiceConversationId(client, "conv-xyz");
+
+    expect(from).toHaveBeenCalledWith("checkins");
+    expect(contains).toHaveBeenCalledWith("voice_biomarkers", {
+      conversationId: "conv-xyz",
+    });
+    expect(found).toEqual(row);
+  });
+
+  it("returns undefined when no row matches", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const limit = vi.fn(() => ({ maybeSingle }));
+    const order = vi.fn(() => ({ limit }));
+    const contains = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ contains }));
+    const from = vi.fn(() => ({ select }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    await expect(
+      findCheckinByVoiceConversationId(client, "missing"),
+    ).resolves.toBeUndefined();
   });
 });

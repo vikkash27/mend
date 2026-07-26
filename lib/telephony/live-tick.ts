@@ -1,5 +1,6 @@
 import { analyzeLiveVoiceSnapshot } from "@/lib/amplifier/analyze-live-snapshot";
 import { fetchConversationDetails } from "./elevenlabs-conversation";
+import { finalizeLiveSession } from "./live-finalize";
 import {
   beginTick,
   endTick,
@@ -13,6 +14,7 @@ export async function runLiveTick(args: {
   nowIso?: string;
   fetchImpl?: typeof fetch;
   analyzeSnapshot?: typeof analyzeLiveVoiceSnapshot;
+  finalizeSession?: typeof finalizeLiveSession;
 }): Promise<LiveCallSession | null> {
   const nowIso = args.nowIso ?? new Date().toISOString();
 
@@ -26,12 +28,14 @@ export async function runLiveTick(args: {
       return null;
     }
 
-    const priorBiomarkers = session.biomarkers;
+    if (session.status === "completed" || session.status === "error") {
+      return session;
+    }
 
-    let skipSnapshot =
-      session.status === "finalizing" ||
-      session.status === "completed" ||
-      session.status === "error";
+    const priorBiomarkers = session.biomarkers;
+    const wasFinalizing = session.status === "finalizing";
+
+    let skipSnapshot = wasFinalizing;
 
     const conversation = await fetchConversationDetails({
       conversationId: args.conversationId,
@@ -69,6 +73,16 @@ export async function runLiveTick(args: {
             : {}),
         });
       }
+    }
+
+    const current = getLiveSession(args.conversationId);
+    if (current?.status === "finalizing") {
+      const finalize = args.finalizeSession ?? finalizeLiveSession;
+      return finalize({
+        conversationId: args.conversationId,
+        fetchImpl: args.fetchImpl,
+        analyzeSnapshot: args.analyzeSnapshot,
+      });
     }
 
     return getLiveSession(args.conversationId);

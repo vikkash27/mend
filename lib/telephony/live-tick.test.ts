@@ -89,7 +89,7 @@ describe("runLiveTick", () => {
     });
   });
 
-  it("sets finalizing when ended", async () => {
+  it("sets finalizing then completed when ended (finalize runs)", async () => {
     process.env.ELEVENLABS_API_KEY = "xi_test";
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
@@ -106,20 +106,37 @@ describe("runLiveTick", () => {
         { status: 200 },
       ),
     );
-    const analyzeSnapshot = vi.fn();
+    const analyzeSnapshot = vi.fn().mockResolvedValue(readyBiomarkers);
+    const finalizeSession = vi.fn().mockImplementation(async () => {
+      updateLiveSession(CONVERSATION_ID, {
+        status: "completed",
+        biomarkers: readyBiomarkers,
+      });
+      return getLiveSession(CONVERSATION_ID);
+    });
 
     await runLiveTick({
       conversationId: CONVERSATION_ID,
       nowIso: NOW,
       fetchImpl,
       analyzeSnapshot,
+      finalizeSession,
     });
 
-    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("finalizing");
+    expect(finalizeSession).toHaveBeenCalledWith({
+      conversationId: CONVERSATION_ID,
+      fetchImpl,
+      analyzeSnapshot,
+    });
+    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
+    expect(getLiveSession(CONVERSATION_ID)?.turns).toEqual([
+      { role: "agent", text: "Goodbye" },
+    ]);
+    // During-call snapshot skipped; finalize owns the final snapshot attempt.
     expect(analyzeSnapshot).not.toHaveBeenCalled();
   });
 
-  it("skips snapshot when session is finalizing even if conversation fetch fails", async () => {
+  it("finalizes when session is already finalizing even if conversation fetch fails", async () => {
     process.env.ELEVENLABS_API_KEY = "xi_test";
     upsertLiveSession({
       conversationId: CONVERSATION_ID,
@@ -134,16 +151,22 @@ describe("runLiveTick", () => {
       new Response("upstream error", { status: 503 }),
     );
     const analyzeSnapshot = vi.fn();
+    const finalizeSession = vi.fn().mockImplementation(async () => {
+      updateLiveSession(CONVERSATION_ID, { status: "completed" });
+      return getLiveSession(CONVERSATION_ID);
+    });
 
     await runLiveTick({
       conversationId: CONVERSATION_ID,
       nowIso: NOW,
       fetchImpl,
       analyzeSnapshot,
+      finalizeSession,
     });
 
     expect(analyzeSnapshot).not.toHaveBeenCalled();
-    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("finalizing");
+    expect(finalizeSession).toHaveBeenCalled();
+    expect(getLiveSession(CONVERSATION_ID)?.status).toBe("completed");
     expect(getLiveSession(CONVERSATION_ID)?.biomarkers).toEqual(readyBiomarkers);
   });
 
