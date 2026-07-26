@@ -10,6 +10,7 @@ import { Integrations } from "./Integrations";
 import { LandingNav } from "./LandingNav";
 import { Surfaces } from "./Surfaces";
 import { Trust } from "./Trust";
+import { VoiceBiomarkers } from "./VoiceBiomarkers";
 
 export function LandingPage() {
   // Scope smooth scrolling to the landing page so /call (and other demos) stay snappy.
@@ -32,6 +33,7 @@ export function LandingPage() {
         <Hero />
         <Gap />
         <HowItWorks />
+        <VoiceBiomarkers />
         <AscBand />
         <Integrations />
         <Trust />

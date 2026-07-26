@@ -63,7 +63,7 @@ export function Hero() {
           >
             <li className="flex gap-3">
               <span className="numeric font-medium text-signal">01</span>
-              <span>Voice check-in at home</span>
+              <span>Voice check-in + voice biomarkers</span>
             </li>
             <li className="flex gap-3">
               <span className="numeric font-medium text-signal">02</span>

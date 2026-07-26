@@ -52,5 +52,15 @@ describe("landing copy honesty", () => {
     expect(businessCaseCopy.landingBand.href).toBe("/business-case");
     expect(businessCaseCopy.landingBand.cta.length).toBeGreaterThan(0);
   });
+
+  it("highlights voice biomarkers without inventing claims", () => {
+    expect(landingCopy.voice.title).toMatch(/sensor/i);
+    expect(landingCopy.voice.steps).toHaveLength(3);
+    const blob = JSON.stringify(landingCopy.voice);
+    expect(blob).toMatch(/respiratory/i);
+    expect(blob).toMatch(/cognitive/i);
+    expect(blob).not.toMatch(/diagnos|FDA-cleared voice|100%/i);
+  });
 });
+
 

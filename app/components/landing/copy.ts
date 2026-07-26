@@ -4,7 +4,7 @@ export const landingCopy = {
   brand: "Mend",
   headline: "Recovery doesn’t end at discharge.",
   support:
-    "Voice check-ins at home. A deterministic clinical engine. The right person notified when something drifts.",
+    "Voice check-ins at home — with voice biomarkers on the chart. A deterministic clinical engine. The right person notified when something drifts.",
   primaryCta: "Open clinician hub",
   primaryHref: "/clinician",
   secondaryCta: "Patient portal",
@@ -39,6 +39,27 @@ export const landingCopy = {
       {
         title: "The right people, same truth",
         body: "Patient call guidance, family update, and clinician worklist all reflect the same engine decision.",
+      },
+    ],
+  },
+  voice: {
+    eyebrow: "Voice biomarkers",
+    title: "The call is the sensor.",
+    support:
+      "While Margaret talks, Mend analyzes the voice itself — respiratory and cognitive signal for the clinician chart. Words for the conversation. Voice for the drift you might otherwise miss.",
+    caption: "Ring → talk → biomarkers · loops on the phone",
+    steps: [
+      {
+        title: "Phone rings",
+        body: "A calm morning check-in — no app to open, no portal to remember.",
+      },
+      {
+        title: "Conversation",
+        body: "Plain-language questions. The call records the voice that feeds analysis.",
+      },
+      {
+        title: "Voice biomarkers",
+        body: "Respiratory and cognitive levels land on the clinician chart. High is amber — never a PE-red substitute for the rule engine.",
       },
     ],
   },
