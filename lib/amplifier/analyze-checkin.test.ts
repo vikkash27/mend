@@ -201,6 +201,46 @@ describe("analyzeCheckinVoiceBiomarkers", () => {
     expect(result.record.error).toMatch(/failed|boom|Amplifier/i);
   });
 
+  it("sets phase final on successful ready record", async () => {
+    setAllCredentials();
+    const { analyzeCheckinVoiceBiomarkers } = await freshModule();
+    const prior = greenPrior();
+
+    const fetchImpl = fakeFetch((url, init) => {
+      if (url === AUDIO_URL) {
+        return new Response(new Uint8Array([1, 2, 3, 4]), {
+          status: 200,
+          headers: { "Content-Type": "audio/wav" },
+        });
+      }
+      if (url === ANALYZE_URL && init.method === "POST") {
+        const form = init.body as FormData;
+        const domain = String(form.get("use_case"));
+        return new Response(
+          JSON.stringify({ job_id: `job-${domain}`, status: "queued" }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith("https://api.amplifierhealth.com/v2/jobs/")) {
+        return new Response(
+          JSON.stringify({
+            status: "done",
+            result: domainResult("low", "COPD"),
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+
+    const result = await analyzeCheckinVoiceBiomarkers(
+      baselineArgs({ priorDecision: prior, fetchImpl }),
+    );
+
+    expect(result.record.status).toBe("ready");
+    expect(result.record.phase).toBe("final");
+  });
+
   it("on success maps biomarkers, re-evaluates, and sets decisionChanged when voice rules fire", async () => {
     setAllCredentials();
     const { analyzeCheckinVoiceBiomarkers } = await freshModule();
