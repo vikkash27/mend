@@ -41,7 +41,7 @@ So each rule needs three things, not one:
 | **Phase boundaries (days 0–3, 4–13, 14–41, 42+)** | `recovery-graph.ts` | **Adjudicated 2026-07-25** — Adjusted to align with post-operative fever literature showing fever transition at POD 3–6. |
 | Rehab milestones and precautions | `recovery-graph.ts` | AAOS / APTA post-THA protocols — or the unit's own, which is more defensible for a demo |
 | Plausibility ranges (HR 20–250 etc.) | `vitals.ts` | Device specifications, not clinical guidelines. These are artefact filters, not thresholds. |
-| RPM / RTM CPT codes | `docs/business-case-asc.html` | **AMA CPT** descriptors + **CMS Physician Fee Schedule** final rule. These change annually — version-pin them. See the global-period caveat in the business case. |
+| RPM / RTM CPT codes | `/business-case` (assumptions) · `docs/business-case-asc.html` | **AMA CPT** descriptors + **CMS Physician Fee Schedule** final rule. These change annually — version-pin them. See the global-period caveat in the business case. |
 
 ## Known drift — documentation ahead of code
 

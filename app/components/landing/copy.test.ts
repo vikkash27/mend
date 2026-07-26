@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { businessCaseCopy } from "@/app/components/business-case/copy";
 import { LANDING_CONTACT_EMAIL, talkToUsHref } from "./contact";
 import { landingCopy, PRODUCT_SURFACES } from "./copy";
 
@@ -46,4 +47,10 @@ describe("landing copy honesty", () => {
     expect(talkToUsHref()).toMatch(/^mailto:/);
     expect(talkToUsHref()).toContain(LANDING_CONTACT_EMAIL);
   });
+
+  it("links the mid-page ASC band to the business case route", () => {
+    expect(businessCaseCopy.landingBand.href).toBe("/business-case");
+    expect(businessCaseCopy.landingBand.cta.length).toBeGreaterThan(0);
+  });
 });
+
