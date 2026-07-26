@@ -40,4 +40,6 @@ export type VoiceBiomarkersRecord = {
   error?: string;
   raw?: unknown;
   mapped?: VoiceBiomarkers;
+  /** during = mid-call snapshot; final = post-call source of truth */
+  phase?: "during" | "final";
 };

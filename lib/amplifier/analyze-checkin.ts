@@ -195,6 +195,7 @@ export async function analyzeCheckinVoiceBiomarkers(args: {
     conversationId: args.conversationId,
     jobIds,
     analyzedAt: new Date().toISOString(),
+    phase: "final",
     raw: {
       respiratory: respiratoryPoll.result,
       cognitive: cognitivePoll.result,

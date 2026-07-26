@@ -13,6 +13,7 @@ import {
 } from "react";
 import { CallStage } from "@/app/components/call/CallStage";
 import type { LoadedCallStageProps } from "@/app/components/call/load-call-stage-props";
+import { useLiveCallFeed } from "@/app/components/call/use-live-call-feed";
 import { Button } from "@/components/ui/button";
 import { SeverityChip, SeverityPanel } from "@/components/ui/severity-chip";
 import { getLiveCall, startLiveCall, subscribeLiveCall } from "@/lib/sim/live-call";
@@ -20,6 +21,10 @@ import type { RosterPatient } from "@/lib/sim/roster";
 import { cn } from "@/lib/utils";
 import { DecisionAudit } from "./AuditTrail";
 import { BillingPanel } from "./BillingPanel";
+import {
+  CallHistory,
+  resolveChartVoiceBiomarkers,
+} from "./CallHistory";
 import {
   CHART_TABS,
   type ChartTabId,
@@ -112,10 +117,49 @@ export function PatientChart({
   const [activeTab, setActiveTab] = useState<ChartTabId>(initialTab);
   const [callState, setCallState] = useState<CallActionState>({ kind: "idle" });
   const prevLiveActive = useRef(liveActive);
+  const prevLiveFeedStatus = useRef<string>("idle");
+  /** Keep polling through finalizing until final biomarkers land / feed idles. */
+  const [pollLiveFeed, setPollLiveFeed] = useState(liveActive);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (liveActive) {
+      setPollLiveFeed(true);
+    }
+  }, [liveActive]);
+
+  const liveFeed = useLiveCallFeed(2500, pollLiveFeed);
+
+  useEffect(() => {
+    const prevStatus = prevLiveFeedStatus.current;
+    prevLiveFeedStatus.current = liveFeed.status;
+
+    const leftFinalizing =
+      prevStatus === "finalizing" &&
+      (liveFeed.status === "completed" ||
+        liveFeed.status === "idle" ||
+        liveFeed.status === "error");
+    const finalBiomarkersReady =
+      liveFeed.status === "completed" &&
+      liveFeed.session?.biomarkers?.phase === "final";
+
+    // Refresh RSC chart props when post-call analyze finishes so check-in
+    // history / decision reflect final biomarkers without a full navigation.
+    if (leftFinalizing || finalBiomarkersReady) {
+      router.refresh();
+    }
+
+    if (
+      (!liveActive && liveFeed.status === "idle") ||
+      liveFeed.status === "completed" ||
+      liveFeed.status === "error"
+    ) {
+      setPollLiveFeed(false);
+    }
+  }, [liveActive, liveFeed.status, liveFeed.session?.biomarkers?.phase, router]);
 
   useEffect(() => {
     if (initialLiveFocus && liveActive) {
@@ -186,6 +230,16 @@ export function PatientChart({
     vitals: checkin.vitals,
     symptoms: checkin.symptoms,
   }));
+
+  const liveSession =
+    liveFeed.session && liveFeed.session.patientId === patient.id
+      ? liveFeed.session
+      : null;
+  const voiceRecord = resolveChartVoiceBiomarkers({
+    patientId: patient.id,
+    latestCheckin: latest,
+    session: liveSession,
+  });
 
   const showLivePane = liveActive && focusLive;
 
@@ -439,11 +493,17 @@ export function PatientChart({
                         />
                       </div>
                     </Panel>
-                    {latest.voiceBiomarkers ? (
+                    {voiceRecord ? (
                       <Panel className="p-5">
-                        <VoiceBiomarkersPanel record={latest.voiceBiomarkers} />
+                        <VoiceBiomarkersPanel record={voiceRecord} />
                       </Panel>
                     ) : null}
+                    <CallHistory
+                      checkins={patient.checkins}
+                      patientId={patient.id}
+                      now={now}
+                      session={liveSession}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -523,6 +583,12 @@ export function PatientChart({
                     values that rule read, and the provenance of every threshold it
                     compared them against.
                   </p>
+                  <CallHistory
+                    checkins={patient.checkins}
+                    patientId={patient.id}
+                    now={now}
+                    session={liveSession}
+                  />
                   <Panel className="overflow-hidden">
                     {history.map((checkin, index) => (
                       <DecisionAudit
