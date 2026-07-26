@@ -34,17 +34,17 @@
 
 ### Task 1: Copy + honesty tests
 
-- [ ] Add `copy.ts` with hero, thesis, buyer, economics, consumer, wedge, close.
-- [ ] Add tests: required sections, no named customers, illustrative caveat present, route `/business-case`.
-- [ ] Run `npx vitest run app/components/business-case/copy.test.ts`.
+- [x] Add `copy.ts` with hero, thesis, buyer, economics, consumer, wedge, close.
+- [x] Add tests: required sections, no named customers, illustrative caveat present, route `/business-case`.
+- [x] Run `npx vitest run app/components/business-case/copy.test.ts`.
 
 ### Task 2: Page UI + route
 
-- [ ] Implement sections + BusinessCasePage.
-- [ ] Add `app/business-case/page.tsx` metadata.
-- [ ] Wire LandingNav with Business case link; update landing copy + landing tests if needed.
+- [x] Implement sections + BusinessCasePage.
+- [x] Add `app/business-case/page.tsx` metadata.
+- [x] Wire LandingNav with Business case link; update landing copy + landing tests if needed.
 
 ### Task 3: Verify + ship
 
-- [ ] `npm test` (or targeted) + `npm run lint` + `npm run build`.
-- [ ] Commit, push, open PR.
+- [x] `npm test` (or targeted) + `npm run lint` + `npm run build`.
+- [x] Commit, push, open PR.
