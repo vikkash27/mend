@@ -47,8 +47,8 @@ export function ClinicianShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
+    <div data-surface="clinician" className="min-h-screen bg-paper text-ink">
+      <header className="sticky top-0 z-20 border-b-2 border-line-strong bg-paper">
         <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center gap-x-6 gap-y-1 px-6 md:px-8">
           <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <Link
@@ -104,8 +104,8 @@ export function ClinicianShell({
                   className={cn(
                     "inline-flex min-h-11 items-center rounded-md px-3 text-label",
                     isActive
-                      ? "bg-wash-strong font-medium text-ink ring-1 ring-inset ring-line-strong"
-                      : "text-ink-secondary hover:bg-wash",
+                      ? "bg-ink font-medium text-paper"
+                      : "text-ink-secondary hover:bg-wash hover:text-ink",
                   )}
                 >
                   {item.label}
@@ -171,7 +171,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-lg border border-line bg-raised shadow-card",
+        "rounded-md border-2 border-line-strong bg-raised",
         className,
       )}
     >

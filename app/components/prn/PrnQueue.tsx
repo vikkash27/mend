@@ -37,7 +37,7 @@ export function PrnQueue({ decidedBy = "Clinician" }: { decidedBy?: string }) {
 
   if (data.unavailable) {
     return (
-      <section className="rounded-xl border border-line bg-raised p-4">
+      <section className="rounded-md border-2 border-line-strong bg-raised p-4">
         <Heading count={null} />
         <p className="pt-1 text-label text-ink-secondary">
           Requests could not be loaded, so this list may not be complete. Check the nurse
@@ -51,7 +51,7 @@ export function PrnQueue({ decidedBy = "Clinician" }: { decidedBy?: string }) {
   if (requests.length === 0) return null;
 
   return (
-    <section className="space-y-3 rounded-xl border border-line bg-raised p-4">
+    <section className="space-y-3 rounded-md border-2 border-line-strong bg-raised p-4">
       <Heading count={requests.length} />
       <div className="space-y-3">
         {requests.map((r) => (
@@ -73,7 +73,7 @@ function Heading({ count }: { count: number | null }) {
   return (
     <div className="flex items-center gap-2">
       <Pill aria-hidden="true" className="size-4 text-ink-tertiary" strokeWidth={2} />
-      <h2 className="font-sans text-[11px] font-medium tracking-[0.12em] text-ink-tertiary uppercase">
+      <h2 className="font-sans text-[11px] font-medium tracking-[0.12em] text-ink uppercase">
         Analgesia requests{count !== null ? ` · ${count}` : ""}
       </h2>
     </div>

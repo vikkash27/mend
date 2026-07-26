@@ -5,13 +5,10 @@ import type { Severity } from "@/lib/clinical/types";
 import type { RosterPatient } from "@/lib/sim/roster";
 
 /**
- * The one-line answer to "how is the panel doing, and is it paying for
- * itself?", above the worklist.
+ * Hub / directory summary strips.
  *
- * Every figure is counted from the roster and the billing module at render
- * time. The two severity counts are chips rather than numbers in a coloured
- * box, so the summary obeys the same never-colour-alone rule as the rows it
- * summarises.
+ * ClinicalSummary answers "who needs me?" for the morning triage board.
+ * BillingSummary answers "is the panel paying for itself?" on Patients.
  */
 
 function Stat({
@@ -25,7 +22,7 @@ function Stat({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5 px-5 py-4 first:pl-0">
-      <p className="eyebrow">{label}</p>
+      <p className="eyebrow text-ink">{label}</p>
       <div className="flex min-h-8 flex-wrap items-center gap-2">{children}</div>
       {detail ? (
         <p className="numeric text-meta text-ink-tertiary">{detail}</p>
@@ -45,11 +42,45 @@ function Figure({ value, unit }: { value: number | string; unit?: string }) {
   );
 }
 
-export function PracticeSummary({ patients }: { patients: RosterPatient[] }) {
+export function ClinicalSummary({ patients }: { patients: RosterPatient[] }) {
   const count = (level: Severity) =>
     patients.filter((p) => p.latest.decision.level === level).length;
 
   const openEscalations = patients.reduce((sum, p) => sum + p.openEscalations, 0);
+  const urgent = count("red");
+  const attention = count("amber");
+  const onTrack = count("green");
+
+  return (
+    <div className="grid grid-cols-1 divide-y-2 divide-line-strong border-y-2 border-line-strong sm:grid-cols-3 sm:divide-x-2 sm:divide-y-0">
+      <Stat label="On the panel" detail="monitored patients">
+        <Figure value={patients.length} unit="patients" />
+      </Stat>
+
+      <Stat label="Needing a clinician" detail={`${onTrack} on track`}>
+        {urgent > 0 ? (
+          <SeverityChip level="red" size="sm" label={`${urgent} urgent`} />
+        ) : null}
+        {attention > 0 ? (
+          <SeverityChip
+            level="amber"
+            size="sm"
+            label={`${attention} needs attention`}
+          />
+        ) : null}
+        {urgent + attention === 0 ? (
+          <SeverityChip level="green" size="sm" label="all on track" />
+        ) : null}
+      </Stat>
+
+      <Stat label="Open escalations" detail="unacknowledged, all patients">
+        <Figure value={openEscalations} unit="to review" />
+      </Stat>
+    </div>
+  );
+}
+
+export function BillingSummary({ patients }: { patients: RosterPatient[] }) {
   const monitoringDays = patients.reduce(
     (sum, p) => sum + p.billing.monitoringDays,
     0,
@@ -65,31 +96,7 @@ export function PracticeSummary({ patients }: { patients: RosterPatient[] }) {
   const supplyReady = patients.filter((p) => p.billing.monitoringDays >= 16).length;
 
   return (
-    <div className="grid grid-cols-2 divide-line border-y border-line sm:grid-cols-3 sm:divide-x xl:grid-cols-6">
-      <Stat label="On the panel" detail="all synthetic, no PHI">
-        <Figure value={patients.length} unit="patients" />
-      </Stat>
-
-      <Stat label="Needing a clinician" detail={`${count("green")} on track`}>
-        {count("red") > 0 ? (
-          <SeverityChip level="red" size="sm" label={`${count("red")} urgent`} />
-        ) : null}
-        {count("amber") > 0 ? (
-          <SeverityChip
-            level="amber"
-            size="sm"
-            label={`${count("amber")} needs attention`}
-          />
-        ) : null}
-        {count("red") + count("amber") === 0 ? (
-          <SeverityChip level="green" size="sm" label="all on track" />
-        ) : null}
-      </Stat>
-
-      <Stat label="Open escalations" detail="unacknowledged, all patients">
-        <Figure value={openEscalations} unit="to review" />
-      </Stat>
-
+    <div className="grid grid-cols-1 divide-y-2 divide-line-strong border-y-2 border-line-strong sm:grid-cols-3 sm:divide-x-2 sm:divide-y-0">
       <Stat
         label="Monitoring days"
         detail={`${supplyReady} of ${patients.length} past the 16-day supply bar`}
@@ -104,6 +111,16 @@ export function PracticeSummary({ patients }: { patients: RosterPatient[] }) {
       <Stat label="Claimable units" detail="RPM and RTM, accrued not submitted">
         <Figure value={units} unit="codes" />
       </Stat>
+    </div>
+  );
+}
+
+/** @deprecated Prefer ClinicalSummary / BillingSummary for surface-specific layout. */
+export function PracticeSummary({ patients }: { patients: RosterPatient[] }) {
+  return (
+    <div className="space-y-0">
+      <ClinicalSummary patients={patients} />
+      <BillingSummary patients={patients} />
     </div>
   );
 }

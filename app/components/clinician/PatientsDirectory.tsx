@@ -2,13 +2,14 @@
 
 import { useMemo } from "react";
 import type { RosterPatient } from "@/lib/sim/roster";
-import { ActionBoard } from "./ActionBoard";
 import { SectionHeading } from "./ClinicianShell";
 import { fullDate } from "./format";
+import { BillingSummary } from "./PracticeSummary";
 import { Worklist } from "./Worklist";
 
 /**
- * Full patient directory: call actions + the complete worklist table.
+ * Full patient directory: billing posture for the panel + complete worklist.
+ * Calling a patient is a chart action, not a directory-level demo control.
  */
 export function PatientsDirectory({
   patients,
@@ -23,12 +24,13 @@ export function PatientsDirectory({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-8 pb-2">
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b-2 border-line-strong pt-8 pb-4">
         <div className="space-y-1.5">
           <h1 className="font-heading text-heading text-ink">Patients</h1>
           <p className="max-w-3xl text-label text-ink-secondary">
             Full panel, worst first. Open a row for that patient&apos;s chart —
-            overview, readings, handoff, billing, and audit.
+            overview, readings, handoff, billing, and audit. Place a call from
+            the chart once you know who you are calling.
           </p>
         </div>
         <p className="numeric text-meta text-ink-tertiary">
@@ -36,7 +38,7 @@ export function PatientsDirectory({
         </p>
       </div>
 
-      <ActionBoard patients={patients} />
+      <BillingSummary patients={patients} />
 
       <div className="space-y-4">
         <SectionHeading

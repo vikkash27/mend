@@ -59,14 +59,14 @@ export function Worklist({
   const selectable = typeof onSelect === "function";
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-raised shadow-card">
+    <div className="overflow-hidden rounded-md border-2 border-line-strong bg-raised">
       <table className="block w-full border-collapse md:table">
         <caption className="sr-only">
           Patients under remote monitoring, worst first, then most recently heard
           from.
         </caption>
         <thead className="hidden md:table-header-group">
-          <tr className="border-b border-line bg-wash">
+          <tr className="border-b-2 border-line-strong bg-wash">
             <th scope="col" className={HEAD}>
               Patient
             </th>
@@ -106,7 +106,7 @@ export function Worklist({
                 data-level={level}
                 data-selected={selected ? "true" : undefined}
                 className={cn(
-                  "relative block border-b border-line last:border-b-0 md:table-row",
+                  "relative block border-b border-line-strong/40 last:border-b-0 md:table-row",
                   "px-2 py-3 md:px-0 md:py-0",
                   "focus-within:bg-wash hover:bg-wash",
                   selected && "bg-wash",

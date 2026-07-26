@@ -191,7 +191,7 @@ export function PatientChart({
 
   return (
     <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-8 pb-2">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b-2 border-line-strong pt-8 pb-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-heading text-heading text-ink">{patient.name}</h1>
@@ -266,13 +266,14 @@ export function PatientChart({
                 onClick={() => void callNow()}
                 disabled={callState.kind === "pending"}
                 className="min-h-11"
+                aria-label={`Call ${patient.name}`}
               >
                 {callState.kind === "pending" ? (
                   <Loader2 aria-hidden="true" className="size-4 animate-spin" />
                 ) : (
                   <Phone aria-hidden="true" className="size-4" />
                 )}
-                Call now
+                Call {patient.name.split(/\s+/)[0]}
               </Button>
             </div>
             <CallStatus state={callState} />
@@ -301,7 +302,7 @@ export function PatientChart({
             <div
               role="tablist"
               aria-label="Patient chart sections"
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-0 border-b-2 border-line-strong"
             >
               {CHART_TABS.map((tab) => {
                 const current = tab.id === activeTab;
@@ -314,11 +315,11 @@ export function PatientChart({
                     aria-selected={current}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "inline-flex min-h-10 items-center justify-center rounded-full px-4 text-label transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ink/25",
+                      "-mb-[2px] inline-flex min-h-11 items-center justify-center border-b-2 px-4 text-label transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2",
                       current
-                        ? "bg-ink font-medium text-paper"
-                        : "bg-wash text-ink-secondary hover:bg-line/60 hover:text-ink",
+                        ? "border-ink font-medium text-ink"
+                        : "border-transparent text-ink-secondary hover:border-line hover:text-ink",
                     )}
                   >
                     {tab.label}

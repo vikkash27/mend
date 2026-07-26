@@ -82,7 +82,7 @@ function Panel({
   return (
     <section
       className={cn(
-        "space-y-4 rounded-xl border border-line bg-raised p-5 shadow-card",
+        "space-y-4 rounded-md border-2 border-line-strong bg-raised p-5",
         className,
       )}
     >

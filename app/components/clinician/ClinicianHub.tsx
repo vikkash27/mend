@@ -1,10 +1,9 @@
-"use client";
-
 import Link from "next/link";
 import type { RosterPatient } from "@/lib/sim/roster";
-import { ActionBoard } from "./ActionBoard";
+import { PrnQueue } from "@/app/components/prn/PrnQueue";
 import { fullDate } from "./format";
 import { NeedsAttention } from "./NeedsAttention";
+import { ClinicalSummary } from "./PracticeSummary";
 
 export function ClinicianHub({
   patients,
@@ -17,18 +16,19 @@ export function ClinicianHub({
 }) {
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-8 pb-2">
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b-2 border-line-strong pt-8 pb-4">
         <div className="space-y-1.5">
           <h1 className="font-heading text-heading text-ink">Clinician hub</h1>
           <p className="max-w-3xl text-label text-ink-secondary">
-            What needs attention and what to do next. Open{" "}
+            Who needs attention first. Open a patient to review their chart, then
+            place a named call from there. Full panel lives under{" "}
             <Link
               href="/clinician/patients"
               className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
             >
               Patients
-            </Link>{" "}
-            for the full panel directory and every chart.
+            </Link>
+            .
           </p>
         </div>
         <p className="numeric text-meta text-ink-tertiary">
@@ -36,16 +36,18 @@ export function ClinicianHub({
         </p>
       </div>
 
-      <ActionBoard patients={patients} />
+      <ClinicalSummary patients={patients} />
+
+      <PrnQueue />
 
       <NeedsAttention patients={patients} />
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-raised px-5 py-4 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border-2 border-line-strong bg-raised px-5 py-4">
         <div className="space-y-1">
           <p className="text-label font-medium text-ink">Panel directory</p>
           <p className="text-meta text-ink-secondary">
-            {patients.length} monitored patients — open the full worklist to pick a
-            chart or place a call.
+            {patients.length} monitored patients — open the full worklist for
+            billing stats, every chart, and capture tools.
           </p>
         </div>
         <Link

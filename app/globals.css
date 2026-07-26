@@ -170,6 +170,41 @@
   --chart-5: var(--color-line-strong);
 }
 
+/*
+ * Clinician workspace — high-contrast white / black-line system.
+ * Scoped so marketing/landing keep the warm paper look.
+ */
+[data-surface="clinician"] {
+  --color-paper: #ffffff;
+  --color-raised: #ffffff;
+  --color-wash: #f4f4f5;
+  --color-wash-strong: #e4e4e7;
+  --color-line: #27272a;
+  --color-line-strong: #0a0a0a;
+  --color-ink: #0a0a0a;
+  --color-ink-secondary: #27272a;
+  --color-ink-tertiary: #52525b;
+  --shadow-card: none;
+  --shadow-raised: 0 1px 0 rgb(10 10 10 / 0.06);
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-raised);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-raised);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-ink);
+  --primary-foreground: var(--color-paper);
+  --secondary: var(--color-wash);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-wash);
+  --muted-foreground: var(--color-ink-secondary);
+  --accent: var(--color-wash-strong);
+  --accent-foreground: var(--color-ink);
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-ink);
+}
+
 @layer base {
   * {
     border-color: var(--color-line);

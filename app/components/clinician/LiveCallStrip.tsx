@@ -34,7 +34,7 @@ function LiveCallStripInner() {
   if (!active || onPatientLive) return null;
 
   return (
-    <div role="status" className="border-t border-line bg-wash-strong">
+    <div role="status" className="border-t-2 border-line-strong bg-wash-strong">
       <div className="mx-auto flex w-full max-w-[112rem] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-2.5 md:px-8">
         <p className="text-label text-ink">
           <span className="font-medium">Live check-in</span>
